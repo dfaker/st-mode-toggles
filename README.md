@@ -30,8 +30,10 @@ A featherweight extension that gives you a microchip button with a stack of deli
     ```
   - Tooltips show how many modes are currently `ON`.
 
-- Click-outside-to-close behavior
-  - The menu dismisses cleanly when you click elsewhere.
+- Adding new modes, and Import and Export of your customizations is avaliable at the very bottom of the menu:
+
+<img width="509" height="519" alt="image" src="https://github.com/user-attachments/assets/02c0d416-0e9c-44e2-a7dc-c2c0fb759a54" />
+
 
 ## Included modes (handpicked chaos)
 
