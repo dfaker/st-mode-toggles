@@ -60,7 +60,6 @@ let modes = [
 
 ];
 
-
 import {
   Generate,
   extension_prompt_types,
@@ -83,6 +82,9 @@ const DEFAULT_OFF_COUNTDOWN = 5; // Number of messages to send OFF state before 
 // ===== NEW: Persistence System =====
 const EXTENSION_NAME = 'st-mode-toggles';
 
+// ===== NEW: Extension enabled state =====
+let extensionEnabled = true;
+
 function getCurrentChatId() {
   try {
     const context = SillyTavern.getContext();
@@ -93,6 +95,121 @@ function getCurrentChatId() {
   } catch (error) {
     console.error("Error getting chat ID:", error);
     return 'fallback';
+  }
+}
+
+// ===== NEW: Extension Enable/Disable Functions =====
+function enableExtension() {
+  extensionEnabled = true;
+  
+  // Show UI elements
+  const menuButton = document.getElementById('modtog_menu_button');
+  if (menuButton) {
+    menuButton.style.display = 'block';
+  }
+  
+  // Show extension menu item
+  const extensionMenuItem = document.querySelector('[data-extension="mode-toggles"]');
+  if (extensionMenuItem) {
+    extensionMenuItem.style.display = 'flex';
+  }
+  
+  // Save enabled state
+  saveExtensionSettings();
+  
+  console.log("Mode toggles extension enabled");
+  
+  if (window.toastr) {
+    toastr.success('Mode Toggles enabled', 'Mode Toggle');
+  }
+}
+
+function disableExtension() {
+  extensionEnabled = false;
+  
+  // Hide UI elements
+  const menuButton = document.getElementById('modtog_menu_button');
+  if (menuButton) {
+    menuButton.style.display = 'none';
+  }
+  
+  // Hide menu if open
+  if (modTogToolsMenu) {
+    modTogToolsMenu.style.display = 'none';
+  }
+  
+  // Hide extension menu item
+  const extensionMenuItem = document.querySelector('[data-extension="mode-toggles"]');
+  if (extensionMenuItem) {
+    extensionMenuItem.style.display = 'none';
+  }
+  
+  // Save enabled state
+  saveExtensionSettings();
+  
+  console.log("Mode toggles extension disabled");
+  
+  if (window.toastr) {
+    toastr.info('Mode Toggles disabled', 'Mode Toggle');
+  }
+}
+
+function saveExtensionSettings() {
+  try {
+    if (!extension_settings[EXTENSION_NAME]) {
+      extension_settings[EXTENSION_NAME] = {};
+    }
+    
+    extension_settings[EXTENSION_NAME].enabled = extensionEnabled;
+    saveSettingsDebounced();
+    
+    console.log('Extension settings saved:', { enabled: extensionEnabled });
+  } catch (error) {
+    console.error("Error saving extension settings:", error);
+  }
+}
+
+function loadExtensionSettings() {
+  try {
+    const settings = extension_settings[EXTENSION_NAME];
+    if (settings && settings.hasOwnProperty('enabled')) {
+      extensionEnabled = settings.enabled;
+    } else {
+      extensionEnabled = true; // Default to enabled
+    }
+    
+    console.log('Extension settings loaded:', { enabled: extensionEnabled });
+    
+    // Update checkbox state
+    const checkbox = document.getElementById('mode_toggles_enabled');
+    if (checkbox) {
+      checkbox.checked = extensionEnabled;
+    }
+    
+    // Apply enabled state
+    if (extensionEnabled) {
+      enableExtension();
+    } else {
+      disableExtension();
+    }
+  } catch (error) {
+    console.error("Error loading extension settings:", error);
+  }
+}
+
+function setupSettingsListeners() {
+  const checkbox = document.getElementById('mode_toggles_enabled');
+  if (checkbox) {
+    checkbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        enableExtension();
+      } else {
+        disableExtension();
+      }
+    });
+    
+    // Set initial state
+    checkbox.checked = extensionEnabled;
   }
 }
 
@@ -168,7 +285,7 @@ function removeModeOverride(name) {
       saveModeOverrides();
       
       // Remove custom mode from modes array if it was a custom addition
-      const defaultModeNames = []; // This would contain your default mode names
+      const defaultModeNames = ['Noir Echo', 'Silent Scream']; // Default mode names
       if (!defaultModeNames.includes(name)) {
         const modeIndex = modes.findIndex(m => m.name === name);
         if (modeIndex !== -1) {
@@ -183,6 +300,8 @@ function removeModeOverride(name) {
 
 // ===== NEW: Add/Edit Mode Functionality =====
 async function showAddEditModeDialog() {
+  if (!extensionEnabled) return;
+  
   try {
     const result = await Popup.show.input(
       'Add/Edit Mode',
@@ -264,6 +383,8 @@ async function showAddEditModeDialog() {
 
 // ===== NEW: Import/Export Functionality =====
 function exportModes() {
+  if (!extensionEnabled) return;
+  
   try {
     const overrides = extension_settings[EXTENSION_NAME]?.modeOverrides || {};
     
@@ -304,6 +425,8 @@ function exportModes() {
 }
 
 async function showImportDialog() {
+  if (!extensionEnabled) return;
+  
   try {
     // Create a hidden file input
     const fileInput = document.createElement('input');
@@ -410,6 +533,8 @@ async function showImportDialog() {
 }
 
 function saveModeStates() {
+  if (!extensionEnabled) return;
+  
   try {
     const chatId = getCurrentChatId();
     
@@ -465,6 +590,8 @@ function saveModeStates() {
 }
 
 function loadModeStates() {
+  if (!extensionEnabled) return;
+  
   try {
     const chatId = getCurrentChatId();
     
@@ -534,6 +661,8 @@ function repositionMenu() {
 }
 
 function updateMenuTitle() {
+  if (!extensionEnabled) return;
+  
   const menuButton = document.getElementById('modtog_menu_button');
   if (menuButton) {
     const activeCount = modes.filter(mode => mode.status === 'ON').length;
@@ -542,6 +671,8 @@ function updateMenuTitle() {
 }
 
 function toggleModeStatus(modeName) {
+  if (!extensionEnabled) return;
+  
   const mode = modes.find(m => m.name === modeName);
   if (mode) {
     // Mark this mode as toggled
@@ -606,7 +737,7 @@ function setupEventListeners() {
 }
 
 function updateModTogToolsMenu() {
-  if (!modTogToolsMenu) return;
+  if (!modTogToolsMenu || !extensionEnabled) return;
   
   modTogToolsMenu.innerHTML = '';
   
@@ -743,7 +874,14 @@ function addMenuButton() {
       menuButton.title = '0 Modes active.';
       menuButton.tabIndex = 0;
       
+      // Set initial visibility based on extension state
+      if (!extensionEnabled) {
+        menuButton.style.display = 'none';
+      }
+      
       menuButton.addEventListener('click', (e) => {
+        if (!extensionEnabled) return;
+        
         e.stopPropagation();
         
         lastClickPosition.x = e.clientX;
@@ -803,11 +941,18 @@ function addExtensionMenuButton() {
     </div>
   `);
   
+  // Set initial visibility based on extension state
+  if (!extensionEnabled) {
+    $button.hide();
+  }
+  
   // Append to extensions menu
   $button.appendTo($extensions_menu);
   
   // Set click handler to open the mode toggles menu
   $button.click((e) => {
+    if (!extensionEnabled) return;
+    
     e.stopPropagation();
     
     // Position menu near the extensions menu button
@@ -865,6 +1010,11 @@ function createModTogToolsMenu() {
 
 // ===== Global Prompt Interceptor =====
 globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, type) {
+  // Check if extension is enabled
+  if (!extensionEnabled) {
+    return;
+  }
+  
   console.log("Mode toggle prompt interceptor triggered");
   
   const chatId = getCurrentChatId();
@@ -883,7 +1033,7 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
       if (mode.status === 'Activating') displayStatus = 'ON';
       if (mode.status === 'Deactivating') displayStatus = 'OFF';
       
-      return `[${mode.name} ${displayStatus}] - ${mode.description}`;
+      return `[${mode.name} ${displayStatus}] - (Effect when ON "${mode.description}", should be removed when OFF)`;
     });
     
     const prefix = modeLines.join('\n') + '\n\n';
@@ -939,6 +1089,12 @@ async function initSettings() {
   
   console.log("Mode toggle extension initialized with persistence system and custom mode support");
   
+  // Setup settings listeners after adding the HTML
+  setTimeout(() => {
+    setupSettingsListeners();
+    loadExtensionSettings();
+  }, 100);
+  
   setTimeout(setupEventListeners, 1000);
   
   // Add extension menu button using DOMContentLoaded pattern
@@ -986,6 +1142,8 @@ globalThis.showAddEditModeDialog = showAddEditModeDialog;
 globalThis.exportModes = exportModes;
 globalThis.showImportDialog = showImportDialog;
 globalThis.addExtensionMenuButton = addExtensionMenuButton;
+globalThis.enableExtension = enableExtension;
+globalThis.disableExtension = disableExtension;
 
 // ===== Main =====
 jQuery(() => {
