@@ -1036,7 +1036,8 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
       return `[${mode.name} ${displayStatus}] - (Effect when ON "${mode.description}", should be removed when OFF)`;
     });
     
-    const prefix = modeLines.join('\n') + '\n\n';
+
+    const prefix = "Current Active or now Disabled non-diegetic modifier modes:\n\n" + modeLines.join('\n') + '\n\n';
     
     const lastMessage = chat[chat.length - 1];
     if (lastMessage && lastMessage.is_user) {
