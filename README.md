@@ -83,19 +83,7 @@ A featherweight extension that gives you a microchip button with a stack of deli
 
 ## Installation
 
-1. Ensure you’re on a recent SillyTavern build with third-party extensions enabled.
-2. Create the extension folder:
-   - `public/scripts/extensions/third-party/st-mode-toggles/`
-3. Add the extension files:
-   - `public/scripts/extensions/third-party/st-mode-toggles/index.js` ← your provided script
-   - `public/scripts/extensions/third-party/st-mode-toggles/settings.html` ← can be a minimal stub:
-     ```html
-     <div data-extension="st-mode-toggles">
-       <h3>Mode Toggles</h3>
-       <p>Flip vibes from the microchip button in the top bar.</p>
-     </div>
-     ```
-4. Reload SillyTavern. You should see a microchip button in the top menu bar.
+`https://github.com/dfaker/st-mode-toggles`
 
 Notes:
 - The code waits for `#gg-menu-buttons-container` to exist and then injects the button via a `MutationObserver`.
@@ -109,46 +97,16 @@ Notes:
 - The tooltip on the microchip shows how many modes are currently `ON`.
 - Click outside the menu to close it.
 
-## Customization
-
-- Edit the `modes` array in `index.js` to add, remove, or tweak modes:
-  ```js
-  let modes = [
-    { name: 'My New Mode', description: 'What it does.', status: 'OFF' },
-    // ...
-  ];
-  ```
-- Status must be one of: `OFF`, `ON`, `Activating`, `Deactivating`.
-- The injected line format is:
-  ```
-  [<name> <status>] - <description>
-  ```
-  with transitional states displayed as their target (`Activating` → `ON`, `Deactivating` → `OFF`) during injection.
-
 ## Known quirks and limitations
 
 - No persistence yet:
-  - Mode states are not saved between reloads. The module imports `saveSettingsDebounced` but does not use it.
+  - Mode states are not saved between reloads.
 - Injection scope:
   - Only the last user message (`chat[chat.length - 1]`) gets the prefix.
-- Token cost:
-  - Prefixed lines consume context tokens; trim your mode set if needed.
 - Sorting:
   - Active/transitioning modes float to the top; original order is preserved within groups.
 - Title count:
   - The microchip’s tooltip counts only `ON` modes (not transitional ones).
-
-## File structure
-
-```
-public/
-  scripts/
-    extensions/
-      third-party/
-        st-mode-toggles/
-          index.js
-          settings.html
-```
 
 ## Dev notes
 
