@@ -101,6 +101,283 @@ function getCurrentChatId() {
   }
 }
 
+// ===== NEW: Mode Override System =====
+function saveModeOverrides() {
+  try {
+    // Initialize extension settings if needed
+    if (!extension_settings[EXTENSION_NAME]) {
+      extension_settings[EXTENSION_NAME] = {};
+    }
+    if (!extension_settings[EXTENSION_NAME].modeOverrides) {
+      extension_settings[EXTENSION_NAME].modeOverrides = {};
+    }
+    
+    saveSettingsDebounced();
+    console.log('Mode overrides saved:', extension_settings[EXTENSION_NAME].modeOverrides);
+  } catch (error) {
+    console.error("Error saving mode overrides:", error);
+  }
+}
+
+function loadModeOverrides() {
+  try {
+    const overrides = extension_settings[EXTENSION_NAME]?.modeOverrides || {};
+    
+    // Apply overrides to existing modes and add new custom modes
+    Object.keys(overrides).forEach(modeName => {
+      const override = overrides[modeName];
+      const existingMode = modes.find(m => m.name === modeName);
+      
+      if (existingMode) {
+        // Update existing mode
+        existingMode.description = override.description;
+      } else {
+        // Add new custom mode
+        modes.push({
+          name: modeName,
+          description: override.description,
+          status: 'OFF'
+        });
+      }
+    });
+    
+    console.log('Mode overrides loaded:', overrides);
+  } catch (error) {
+    console.error("Error loading mode overrides:", error);
+  }
+}
+
+function addModeOverride(name, description) {
+  try {
+    if (!extension_settings[EXTENSION_NAME]) {
+      extension_settings[EXTENSION_NAME] = {};
+    }
+    if (!extension_settings[EXTENSION_NAME].modeOverrides) {
+      extension_settings[EXTENSION_NAME].modeOverrides = {};
+    }
+    
+    extension_settings[EXTENSION_NAME].modeOverrides[name] = {
+      description: description
+    };
+    
+    saveModeOverrides();
+  } catch (error) {
+    console.error("Error adding mode override:", error);
+  }
+}
+
+function removeModeOverride(name) {
+  try {
+    if (extension_settings[EXTENSION_NAME]?.modeOverrides?.[name]) {
+      delete extension_settings[EXTENSION_NAME].modeOverrides[name];
+      saveModeOverrides();
+      
+      // Remove custom mode from modes array if it was a custom addition
+      const defaultModeNames = []; // This would contain your default mode names
+      if (!defaultModeNames.includes(name)) {
+        const modeIndex = modes.findIndex(m => m.name === name);
+        if (modeIndex !== -1) {
+          modes.splice(modeIndex, 1);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error removing mode override:", error);
+  }
+}
+
+// ===== NEW: Add/Edit Mode Functionality =====
+async function showAddEditModeDialog() {
+  try {
+    const result = await Popup.show.input(
+      'Add/Edit Mode',
+      'Enter mode in format: "Name - description"<br>Leave description blank to remove custom modes.',
+      '',
+      {
+        rows: 2,
+        okButton: 'Save',
+        cancelButton: 'Cancel'
+      }
+    );
+    
+    if (result !== null && result !== '') {
+      const parts = result.split(' - ');
+      const name = parts[0]?.trim();
+      const description = parts.slice(1).join(' - ').trim();
+      
+      if (!name) {
+        if (window.toastr) {
+          toastr.error('Mode name cannot be empty', 'Mode Toggle');
+        }
+        return;
+      }
+      
+      if (description === '') {
+        // Remove override if description is blank
+        removeModeOverride(name);
+        
+        // Reset mode to default if it exists in default modes
+        const existingMode = modes.find(m => m.name === name);
+        if (existingMode) {
+          // You would need to restore the original description here
+          // For now, we'll just remove it if it was a custom mode
+          const modeIndex = modes.findIndex(m => m.name === name);
+          if (modeIndex !== -1) {
+            modes.splice(modeIndex, 1);
+          }
+        }
+        
+        if (window.toastr) {
+          toastr.success(`Mode "${name}" removed`, 'Mode Toggle');
+        }
+      } else {
+        // Add or update mode
+        const existingMode = modes.find(m => m.name === name);
+        
+        if (existingMode) {
+          // Update existing mode
+          existingMode.description = description;
+        } else {
+          // Add new mode
+          modes.push({
+            name: name,
+            description: description,
+            status: 'OFF'
+          });
+        }
+        
+        // Save override
+        addModeOverride(name, description);
+        
+        if (window.toastr) {
+          toastr.success(`Mode "${name}" ${existingMode ? 'updated' : 'added'}`, 'Mode Toggle');
+        }
+      }
+      
+      // Update UI
+      updateMenuTitle();
+      updateModTogToolsMenu();
+      saveModeStates(); // Save current states including any new modes
+    }
+  } catch (error) {
+    console.error("Error in add/edit mode dialog:", error);
+    if (window.toastr) {
+      toastr.error('Error processing mode changes', 'Mode Toggle');
+    }
+  }
+}
+
+// ===== NEW: Import/Export Functionality =====
+function exportModes() {
+  try {
+    const overrides = extension_settings[EXTENSION_NAME]?.modeOverrides || {};
+    
+    if (Object.keys(overrides).length === 0) {
+      if (window.toastr) {
+        toastr.info('No custom modes to export', 'Mode Toggle');
+      }
+      return;
+    }
+    
+    // Format modes as "Name - Description"
+    const exportLines = Object.keys(overrides).map(name => {
+      return `${name} - ${overrides[name].description}`;
+    });
+    
+    const exportText = exportLines.join('\n');
+    
+    // Create and download file
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mode-toggles-export.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (window.toastr) {
+      toastr.success(`Exported ${Object.keys(overrides).length} custom mode(s)`, 'Mode Toggle');
+    }
+  } catch (error) {
+    console.error("Error exporting modes:", error);
+    if (window.toastr) {
+      toastr.error('Error exporting modes', 'Mode Toggle');
+    }
+  }
+}
+
+async function showImportDialog() {
+  try {
+    const result = await Popup.show.input(
+      'Import Modes',
+      'Paste modes in format "Name - Description" (one per line):',
+      '',
+      {
+        rows: 10,
+        okButton: 'Import',
+        cancelButton: 'Cancel'
+      }
+    );
+    
+    if (result !== null && result.trim() !== '') {
+      const lines = result.split('\n').map(line => line.trim()).filter(line => line);
+      let importedCount = 0;
+      let errorCount = 0;
+      
+      lines.forEach(line => {
+        const parts = line.split(' - ');
+        const name = parts[0]?.trim();
+        const description = parts.slice(1).join(' - ').trim();
+        
+        if (!name || !description) {
+          errorCount++;
+          return;
+        }
+        
+        // Add or update mode
+        const existingMode = modes.find(m => m.name === name);
+        
+        if (existingMode) {
+          // Update existing mode
+          existingMode.description = description;
+        } else {
+          // Add new mode
+          modes.push({
+            name: name,
+            description: description,
+            status: 'OFF'
+          });
+        }
+        
+        // Save override
+        addModeOverride(name, description);
+        importedCount++;
+      });
+      
+      // Update UI
+      updateMenuTitle();
+      updateModTogToolsMenu();
+      saveModeStates();
+      
+      if (window.toastr) {
+        if (importedCount > 0) {
+          toastr.success(`Imported ${importedCount} mode(s)`, 'Mode Toggle');
+        }
+        if (errorCount > 0) {
+          toastr.warning(`${errorCount} line(s) skipped due to format errors`, 'Mode Toggle');
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error importing modes:", error);
+    if (window.toastr) {
+      toastr.error('Error importing modes', 'Mode Toggle');
+    }
+  }
+}
+
 function saveModeStates() {
   try {
     const chatId = getCurrentChatId();
@@ -169,8 +446,6 @@ function loadModeStates() {
   }
 }
 
-
-
 function repositionMenu() {
   if (!modTogToolsMenu || modTogToolsMenu.style.display !== 'block') return;
   
@@ -232,7 +507,10 @@ function setupEventListeners() {
     // Also load on app ready
     eventSource.on(event_types.APP_READY, () => {
       console.log("App ready - performing initial mode state load");
-      setTimeout(loadModeStates, 500);
+      setTimeout(() => {
+        loadModeOverrides();
+        loadModeStates();
+      }, 500);
     });
     
     console.log("Mode persistence event listeners registered");
@@ -287,6 +565,73 @@ function updateModTogToolsMenu() {
     
     modTogToolsMenu.appendChild(button);
   });
+  
+  // Add separator and Add/Edit button
+  const separator = document.createElement('div');
+  separator.style.borderTop = '2px solid #555';
+  separator.style.margin = '5px 0';
+  modTogToolsMenu.appendChild(separator);
+  
+  const addEditButton = document.createElement('div');
+  addEditButton.className = 'gg-tools-menu-item interactable';
+  addEditButton.innerHTML = '<strong>+ Add/Edit Mode</strong>';
+  addEditButton.style.cursor = 'pointer';
+  addEditButton.style.padding = '8px 12px';
+  addEditButton.style.fontSize = 'small';
+  addEditButton.style.backgroundColor = 'rgba(0, 0, 255, 0.1)';
+  addEditButton.style.color = '#87CEEB';
+  addEditButton.style.textAlign = 'center';
+  
+  addEditButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modTogToolsMenu.style.display = 'none'; // Hide menu first
+    showAddEditModeDialog();
+  });
+  
+  modTogToolsMenu.appendChild(addEditButton);
+  
+  // Add Import/Export buttons
+  const importExportContainer = document.createElement('div');
+  importExportContainer.style.display = 'flex';
+  importExportContainer.style.gap = '2px';
+  
+  const exportButton = document.createElement('div');
+  exportButton.className = 'gg-tools-menu-item interactable';
+  exportButton.innerHTML = '<strong>📤 Export</strong>';
+  exportButton.style.cursor = 'pointer';
+  exportButton.style.padding = '6px 8px';
+  exportButton.style.fontSize = 'small';
+  exportButton.style.backgroundColor = 'rgba(0, 128, 0, 0.1)';
+  exportButton.style.color = '#90EE90';
+  exportButton.style.textAlign = 'center';
+  exportButton.style.flex = '1';
+  
+  exportButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modTogToolsMenu.style.display = 'none'; // Hide menu first
+    exportModes();
+  });
+  
+  const importButton = document.createElement('div');
+  importButton.className = 'gg-tools-menu-item interactable';
+  importButton.innerHTML = '<strong>📥 Import</strong>';
+  importButton.style.cursor = 'pointer';
+  importButton.style.padding = '6px 8px';
+  importButton.style.fontSize = 'small';
+  importButton.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
+  importButton.style.color = '#FFA500';
+  importButton.style.textAlign = 'center';
+  importButton.style.flex = '1';
+  
+  importButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modTogToolsMenu.style.display = 'none'; // Hide menu first
+    showImportDialog();
+  });
+  
+  importExportContainer.appendChild(exportButton);
+  importExportContainer.appendChild(importButton);
+  modTogToolsMenu.appendChild(importExportContainer);
 }
 
 function addMenuButton() {
@@ -399,7 +744,7 @@ async function initSettings() {
   const html = await renderExtensionTemplateAsync("third-party/st-mode-toggles", "settings");
   jQuery(document.getElementById("extensions_settings")).append(html);
   
-  console.log("Mode toggle extension initialized with persistence system");
+  console.log("Mode toggle extension initialized with persistence system and custom mode support");
   
   setTimeout(setupEventListeners, 1000);
   
@@ -430,6 +775,9 @@ async function initSettings() {
 // ===== Manual functions for testing =====
 globalThis.saveModeStates = saveModeStates;
 globalThis.loadModeStates = loadModeStates;
+globalThis.showAddEditModeDialog = showAddEditModeDialog;
+globalThis.exportModes = exportModes;
+globalThis.showImportDialog = showImportDialog;
 
 // ===== Main =====
 jQuery(() => {
