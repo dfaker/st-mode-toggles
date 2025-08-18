@@ -34,45 +34,6 @@ A featherweight extension that gives you a microchip button with a stack of deli
 
 <img width="509" height="519" alt="image" src="https://github.com/user-attachments/assets/02c0d416-0e9c-44e2-a7dc-c2c0fb759a54" />
 
-
-## Included modes (handpicked chaos)
-
-- `Noir Echo ON`: Rain-slick metal and neon betrayal.
-- `Silent Scream`: Slow-burn psychological dread.
-- `Dialogue Cheese`: Purposefully terrible one-liners.
-- `Terminal Logic`: Unseen AI announces mortality odds.
-- `Veil of Shadows`: Whispers, relics, half-seen figures.
-- `Rashomon Effect`: Conflicting perspectives per scene.
-- `Gravitas Lock`: Zero quips. All weight.
-- `Echoed Futures`: Brief premonitions overlay action.
-- `Glitch-Veil`: Rendering errors bleed into reality.
-- `Bureaucracy Ascendant`: Stamps, queues, bribes, progress.
-- `Murmur Net`: Rumors rewrite the world.
-- `The Sun Is Sick`: Day length wobbles scramble minds/tech.
-- `Dreamwalk Threshold`: Shared dream commons with bleed-through.
-- `Blood Debt Ledger`: Harm accrues cosmic interest.
-- `Knife of Ockham`: Simplicity rewarded, overcomplication punished.
-- `Velvet Hour`: Candlelit lounges and social buffs.
-- `Innuendo Engine`: Suggestive dialogue unlocks paths.
-- `Censor Pixies`: Mosaic sprites as slapstick hazards.
-- `Blush Meter`: Visible blush as social crit/awk gauge.
-- `Gag Reel Spillover`: Outtakes become exploitable “props.”
-- `Developer Commentary`: Floating notes with togglable modifiers.
-- `Subtitle Saboteur`: Captions that lie and react.
-- `Save-Scum Echo`: World remembers reloads.
-- `UI Made Flesh`: Health bars and markers become objects.
-- `Narrator Hot Mic`: Banter the narrator for buffs/debuffs.
-- `Red Curtain Interlude`: Intermission acts for tailored buffs.
-- `Chekhov’s Arsenal`: Spotlighted items will matter later.
-- `Bardic Reality`: Music selection changes mechanics.
-- `Mirror Law`: Reflective portals with delayed doubles.
-- `Palimpsest Layers`: Past maps bleed through; stitch and peel.
-- `Trial by Gossip`: Crowd-sourced tribunals after major beats.
-- `Mask Census`: Masks define roles and access.
-- `Stormglass Morality`: Weather mirrors your choices.
-- `Echo of Names`: Naming alters entities and places.
-- `Split-Screen Fate`: Two timelines you can cross-influence.
-
 ## How it works
 
 - Prompt interception:
