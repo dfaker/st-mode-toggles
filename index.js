@@ -61,7 +61,6 @@ let modes = [
 ];
 
 
-
 import {
   Generate,
   extension_prompt_types,
@@ -77,6 +76,9 @@ let lastClickPosition = { x: 0, y: 0 };
 
 // ===== NEW: Track which modes have been toggled =====
 let toggledModes = new Set(); // Track modes that have been explicitly toggled
+
+// ===== NEW: Countdown system for OFF modes =====
+const DEFAULT_OFF_COUNTDOWN = 5; // Number of messages to send OFF state before removing
 
 // ===== NEW: Persistence System =====
 const EXTENSION_NAME = 'st-mode-toggles';
@@ -419,11 +421,31 @@ function saveModeStates() {
       extension_settings[EXTENSION_NAME].chatStates = {};
     }
     
+    // Get existing saved states to preserve countdown values
+    const existingSavedStates = extension_settings[EXTENSION_NAME].chatStates[chatId] || {};
+    
     // CHANGE 1: Only save modes that have been toggled
     const modeStates = {};
     modes.forEach(mode => {
       if (toggledModes.has(mode.name)) {
-        modeStates[mode.name] = mode.status;
+        if (mode.status === 'OFF') {
+          // For OFF modes, use existing countdown or start new countdown
+          const existingState = existingSavedStates[mode.name];
+          const countdown = (existingState && typeof existingState === 'object' && existingState.countdown !== undefined) 
+            ? existingState.countdown 
+            : DEFAULT_OFF_COUNTDOWN;
+          
+          modeStates[mode.name] = {
+            status: mode.status,
+            countdown: countdown
+          };
+        } else {
+          // For non-OFF modes, just save the status
+          modeStates[mode.name] = {
+            status: mode.status,
+            countdown: null
+          };
+        }
       }
     });
     
@@ -462,7 +484,19 @@ function loadModeStates() {
       Object.keys(savedStates).forEach(modeName => {
         const mode = modes.find(m => m.name === modeName);
         if (mode) {
-          mode.status = savedStates[modeName];
+          const savedState = savedStates[modeName];
+          
+          // Handle both old format (string) and new format (object)
+          if (typeof savedState === 'string') {
+            mode.status = savedState;
+          } else if (typeof savedState === 'object') {
+            mode.status = savedState.status;
+            // Store countdown info in a separate tracking object if needed
+            if (savedState.countdown !== null && savedState.countdown !== undefined) {
+              mode._countdown = savedState.countdown;
+            }
+          }
+          
           toggledModes.add(modeName);
         }
       });
@@ -480,6 +514,7 @@ function loadModeStates() {
       // Reset all modes to OFF for new chats
       modes.forEach(mode => {
         mode.status = 'OFF';
+        delete mode._countdown;
       });
       toggledModes.clear();
       updateMenuTitle();
@@ -515,15 +550,18 @@ function toggleModeStatus(modeName) {
     switch (mode.status) {
       case 'OFF':
         mode.status = 'Activating';
+        delete mode._countdown; // Clear any existing countdown
         break;
       case 'ON':
         mode.status = 'Deactivating';
         break;
       case 'Activating':
         mode.status = 'OFF';
+        mode._countdown = DEFAULT_OFF_COUNTDOWN; // Start countdown when turning off
         break;
       case 'Deactivating':
         mode.status = 'ON';
+        delete mode._countdown; // Clear countdown when turning back on
         break;
     }
     updateMenuTitle();
@@ -584,7 +622,14 @@ function updateModTogToolsMenu() {
   sortedModes.forEach(mode => {
     const button = document.createElement('div');
     button.className = 'gg-tools-menu-item interactable';
-    button.innerHTML = `<strong>[${mode.name} ${mode.status}]</strong> - ${mode.description}`;
+    
+    // Show countdown information for OFF modes
+    let statusDisplay = mode.status;
+    if (mode.status === 'OFF' && mode._countdown !== undefined) {
+      statusDisplay = `OFF(${mode._countdown})`;
+    }
+    
+    button.innerHTML = `<strong>[${mode.name} ${statusDisplay}]</strong> - ${mode.description}`;
     button.style.cursor = 'pointer';
     button.style.padding = '8px 12px';
     button.style.borderBottom = '1px solid #333';
@@ -600,8 +645,14 @@ function updateModTogToolsMenu() {
       button.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
       button.style.color = '#90EE90';
     } else if (mode.status === 'OFF') {
-      button.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-      button.style.color = '#FFB6C1';
+      if (mode._countdown !== undefined) {
+        // Different color for counting down OFF modes
+        button.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
+        button.style.color = '#FFD700';
+      } else {
+        button.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+        button.style.color = '#FFB6C1';
+      }
     } else if (mode.status === 'Activating') {
       button.style.backgroundColor = 'rgba(255, 255, 0, 0.1)';
       button.style.color = '#FFD700';
@@ -832,7 +883,7 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
       if (mode.status === 'Activating') displayStatus = 'ON';
       if (mode.status === 'Deactivating') displayStatus = 'OFF';
       
-      return  `[${mode.name} ${displayStatus}] - (Effect when ON = "${mode.description}", should be removed when OFF)`;
+      return `[${mode.name} ${displayStatus}] - ${mode.description}`;
     });
     
     const prefix = modeLines.join('\n') + '\n\n';
@@ -843,18 +894,41 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
     }
   }
   
+  // Handle mode state transitions
   modes.forEach(mode => {
     if (mode.status === 'Activating') {
       mode.status = 'ON';
     } else if (mode.status === 'Deactivating') {
       mode.status = 'OFF';
+      mode._countdown = DEFAULT_OFF_COUNTDOWN; // Start countdown when transitioning to OFF
     }
   });
+  
+  // Decrement countdowns for OFF modes and remove expired ones
+  const modesToRemove = [];
+  modes.forEach(mode => {
+    if (mode.status === 'OFF' && mode._countdown !== undefined) {
+      mode._countdown--;
+      console.log(`Countdown for ${mode.name}: ${mode._countdown}`);
+      
+      if (mode._countdown <= 0) {
+        console.log(`Removing ${mode.name} from toggled modes (countdown expired)`);
+        modesToRemove.push(mode.name);
+        delete mode._countdown;
+        toggledModes.delete(mode.name);
+      }
+    }
+  });
+  
+  // Show notification if modes were removed
+  if (modesToRemove.length > 0 && window.toastr) {
+    toastr.info(`Cleared ${modesToRemove.length} mode(s) from memory`, 'Mode Toggle');
+  }
   
   updateMenuTitle();
   updateModTogToolsMenu();
   
-  // Save states after transitions
+  // Save states after transitions and countdown updates
   saveModeStates();
 };
 
