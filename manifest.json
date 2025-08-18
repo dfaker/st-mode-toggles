@@ -1,0 +1,14 @@
+{
+    "display_name": "Mode Toggles",
+    "loading_order": 5,
+    "generate_interceptor": "modTogPromptInterceptor",
+
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "depFA",
+    "version": "0.3.0",
+    "homePage": "https://github.com/dfaker/st-mode-toggles",
+    "auto_update": true
+}
