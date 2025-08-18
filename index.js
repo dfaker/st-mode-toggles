@@ -1,12 +1,3 @@
-import {
-  Generate,
-  extension_prompt_types,
-  sendMessageAsUser,
-  setExtensionPrompt,
-  saveSettingsDebounced,
-} from "../../../../script.js";
-import { renderExtensionTemplateAsync, extension_settings } from "../../../extensions.js";
-import { Popup, POPUP_TYPE, POPUP_RESULT } from "../../../popup.js";
 
 let modes = [
     { name: 'Noir Echo ON', description: "Shadowy, cyberpunk-inspired despair. Everything is rain-slick metal and neon betrayal.", status: "OFF" },
@@ -81,14 +72,108 @@ let modes = [
 
 ];
 
+import {
+  Generate,
+  extension_prompt_types,
+  sendMessageAsUser,
+  setExtensionPrompt,
+  saveSettingsDebounced,
+} from "../../../../script.js";
+import { renderExtensionTemplateAsync, extension_settings } from "../../../extensions.js";
+import { Popup, POPUP_TYPE, POPUP_RESULT } from "../../../popup.js";
 
 let modTogToolsMenu;
 let lastClickPosition = { x: 0, y: 0 };
 
+// ===== NEW: Persistence System =====
+const EXTENSION_NAME = 'st-mode-toggles';
+
+function getCurrentChatId() {
+  try {
+    const context = SillyTavern.getContext();
+    // Create a unique identifier for this chat/character combination
+    const chatId = context.chatId || 'default';
+    const characterId = context.characterId || 'none';
+    return `${characterId}_${chatId}`;
+  } catch (error) {
+    console.error("Error getting chat ID:", error);
+    return 'fallback';
+  }
+}
+
+function saveModeStates() {
+  try {
+    const chatId = getCurrentChatId();
+    
+    // Initialize extension settings if needed
+    if (!extension_settings[EXTENSION_NAME]) {
+      extension_settings[EXTENSION_NAME] = {};
+    }
+    if (!extension_settings[EXTENSION_NAME].chatStates) {
+      extension_settings[EXTENSION_NAME].chatStates = {};
+    }
+    
+    // Save current mode states
+    const modeStates = {};
+    modes.forEach(mode => {
+      modeStates[mode.name] = mode.status;
+    });
+    
+    extension_settings[EXTENSION_NAME].chatStates[chatId] = modeStates;
+    saveSettingsDebounced();
+    
+    console.log(`Saved mode states for chat ${chatId}:`, modeStates);
+  } catch (error) {
+    console.error("Error saving mode states:", error);
+  }
+}
+
+function loadModeStates() {
+  try {
+    const chatId = getCurrentChatId();
+    
+    // Check if we have saved states for this chat
+    const savedStates = extension_settings[EXTENSION_NAME]?.chatStates?.[chatId];
+    
+    if (savedStates) {
+      console.log(`Loading mode states for chat ${chatId}:`, savedStates);
+      
+      // Apply saved states to modes
+      modes.forEach(mode => {
+        if (savedStates.hasOwnProperty(mode.name)) {
+          mode.status = savedStates[mode.name];
+        } else {
+          mode.status = 'OFF'; // Default for new modes
+        }
+      });
+      
+      updateMenuTitle();
+      updateModTogToolsMenu();
+      
+      // Show notification for active modes
+      const activeModes = modes.filter(mode => mode.status === 'ON');
+      if (activeModes.length > 0 && window.toastr) {
+        toastr.info(`Restored ${activeModes.length} active mode(s)`, 'Mode Toggle');
+      }
+    } else {
+      console.log(`No saved mode states found for chat ${chatId}, resetting to defaults`);
+      // Reset all modes to OFF for new chats
+      modes.forEach(mode => {
+        mode.status = 'OFF';
+      });
+      updateMenuTitle();
+      updateModTogToolsMenu();
+    }
+  } catch (error) {
+    console.error("Error loading mode states:", error);
+  }
+}
+
+
+
 function repositionMenu() {
   if (!modTogToolsMenu || modTogToolsMenu.style.display !== 'block') return;
   
-  // Position menu so bottom-left corner is at last click location
   const menuRect = modTogToolsMenu.getBoundingClientRect();
   modTogToolsMenu.style.left = `${lastClickPosition.x}px`;
   modTogToolsMenu.style.top = `${lastClickPosition.y - menuRect.height}px`;
@@ -121,26 +206,56 @@ function toggleModeStatus(modeName) {
     }
     updateMenuTitle();
     updateModTogToolsMenu();
+    
+    // Save state changes immediately
+    saveModeStates();
+  }
+}
+
+// ===== Event Listener Setup =====
+function setupEventListeners() {
+  try {
+    const context = SillyTavern.getContext();
+    const { eventSource, event_types } = context;
+    
+    if (!eventSource || !event_types) {
+      console.error("EventSource or event_types not available");
+      return;
+    }
+    
+    // Listen for chat changes
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+      console.log("Chat changed - loading mode states");
+      setTimeout(loadModeStates, 100);
+    });
+    
+    // Also load on app ready
+    eventSource.on(event_types.APP_READY, () => {
+      console.log("App ready - performing initial mode state load");
+      setTimeout(loadModeStates, 500);
+    });
+    
+    console.log("Mode persistence event listeners registered");
+    
+  } catch (error) {
+    console.error("Error setting up event listeners:", error);
   }
 }
 
 function updateModTogToolsMenu() {
   if (!modTogToolsMenu) return;
   
-  // Clear existing content
   modTogToolsMenu.innerHTML = '';
   
-  // Sort modes: ON and transitioning states first, then OFF
   const sortedModes = [...modes].sort((a, b) => {
     const aActive = a.status === 'ON' || a.status === 'Activating' || a.status === 'Deactivating';
     const bActive = b.status === 'ON' || b.status === 'Activating' || b.status === 'Deactivating';
     
     if (aActive && !bActive) return -1;
     if (!aActive && bActive) return 1;
-    return 0; // Maintain original order within groups
+    return 0;
   });
   
-  // Create buttons for each mode
   sortedModes.forEach(mode => {
     const button = document.createElement('div');
     button.className = 'gg-tools-menu-item interactable';
@@ -150,15 +265,12 @@ function updateModTogToolsMenu() {
     button.style.borderBottom = '1px solid #333';
     button.style.fontSize = 'small';
     
-    // Add click handler to toggle mode
     button.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent menu from closing
+      e.stopPropagation();
       toggleModeStatus(mode.name);
-      // Reposition menu after content change
-      setTimeout(repositionMenu, 0); // Use setTimeout to ensure DOM updates first
+      setTimeout(repositionMenu, 0);
     });
     
-    // Style based on status
     if (mode.status === 'ON') {
       button.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
       button.style.color = '#90EE90';
@@ -188,11 +300,9 @@ function addMenuButton() {
       menuButton.title = '0 Modes active.';
       menuButton.tabIndex = 0;
       
-      // Add click event listener
       menuButton.addEventListener('click', (e) => {
         e.stopPropagation();
         
-        // Store click position
         lastClickPosition.x = e.clientX;
         lastClickPosition.y = e.clientY;
         
@@ -200,18 +310,15 @@ function addMenuButton() {
           createModTogToolsMenu();
         }
         
-        // Toggle menu visibility
         if (modTogToolsMenu.style.display === 'block') {
           modTogToolsMenu.style.display = 'none';
         } else {
-          // Hide other menus first
           document.querySelectorAll('.gg-tools-menu').forEach(menu => {
             if (menu !== modTogToolsMenu) {
               menu.style.display = 'none';
             }
           });
           
-          // Show the menu first to get its dimensions
           modTogToolsMenu.style.display = 'block';
           modTogToolsMenu.style.position = 'fixed';
           modTogToolsMenu.style.zIndex = '9999';
@@ -223,16 +330,16 @@ function addMenuButton() {
       
       container.appendChild(menuButton);
       updateMenuTitle();
-      return true; // Successfully added
+      return true;
     }
   }
-  return false; // Container not found or button already exists
+  return false;
 }
 
 function createModTogToolsMenu() {
   modTogToolsMenu = document.createElement('div');
   modTogToolsMenu.id = 'modtog_tools_menu';
-  modTogToolsMenu.className = 'gg-tools-menu'; // Use same dropdown menu styling
+  modTogToolsMenu.className = 'gg-tools-menu';
   modTogToolsMenu.style.display = 'none';
   modTogToolsMenu.style.maxWidth = '400px';
   modTogToolsMenu.style.maxHeight = '300px';
@@ -240,7 +347,6 @@ function createModTogToolsMenu() {
   
   document.body.appendChild(modTogToolsMenu);
   
-  // Close menu when clicking outside
   document.addEventListener('click', (e) => {
     if (!modTogToolsMenu.contains(e.target) && e.target.id !== 'modtog_menu_button') {
       modTogToolsMenu.style.display = 'none';
@@ -251,18 +357,13 @@ function createModTogToolsMenu() {
 // ===== Global Prompt Interceptor =====
 globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, type) {
   console.log("Mode toggle prompt interceptor triggered");
-  console.log("Chat messages:", chat.length, "Context size:", contextSize, "Type:", type);
   
-  // Find modes that are ON or transitioning
   const activeModes = modes.filter(mode => 
     mode.status === 'ON' || mode.status === 'Activating' || mode.status === 'Deactivating'
   );
   
-  console.log("Active modes found:", activeModes);
-  
   if (activeModes.length > 0 && chat.length > 0) {
     const modeLines = activeModes.map(mode => {
-      // Show the target status (what it will be after transition)
       let displayStatus = mode.status;
       if (mode.status === 'Activating') displayStatus = 'ON';
       if (mode.status === 'Deactivating') displayStatus = 'OFF';
@@ -271,32 +372,26 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
     });
     
     const prefix = modeLines.join('\n') + '\n\n';
-    console.log("Generated prefix:", prefix);
     
-    // Find the last user message and prepend the mode information
     const lastMessage = chat[chat.length - 1];
     if (lastMessage && lastMessage.is_user) {
       lastMessage.mes = prefix + lastMessage.mes;
-      console.log("Prepended modes to user message:", lastMessage.mes.substring(0, 100) + "...");
     }
   }
   
-  // Transition activating/deactivating modes to their final states
   modes.forEach(mode => {
     if (mode.status === 'Activating') {
-      console.log(`Transitioning ${mode.name} from Activating to ON`);
       mode.status = 'ON';
     } else if (mode.status === 'Deactivating') {
-      console.log(`Transitioning ${mode.name} from Deactivating to OFF`);
       mode.status = 'OFF';
     }
   });
   
-  // Update UI after transitions
   updateMenuTitle();
   updateModTogToolsMenu();
   
-  console.log("Mode transitions complete");
+  // Save states after transitions
+  saveModeStates();
 };
 
 // ===== Settings init =====
@@ -304,18 +399,19 @@ async function initSettings() {
   const html = await renderExtensionTemplateAsync("third-party/st-mode-toggles", "settings");
   jQuery(document.getElementById("extensions_settings")).append(html);
   
-  console.log("Mode toggle extension initialized with prompt interceptor");
+  console.log("Mode toggle extension initialized with persistence system");
+  
+  setTimeout(setupEventListeners, 1000);
   
   const observer = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       if (mutation.type === 'childList') {
         for (let node of mutation.addedNodes) {
-          if (node.nodeType === 1) { // Element node
-            // Check if the added node is our target or contains it
+          if (node.nodeType === 1) {
             if (node.id === 'gg-menu-buttons-container' || 
                 node.querySelector('#gg-menu-buttons-container')) {
               if (addMenuButton()) {
-                observer.disconnect(); // Stop observing once we've added the button
+                observer.disconnect();
                 return;
               }
             }
@@ -330,6 +426,10 @@ async function initSettings() {
     subtree: true
   });
 }
+
+// ===== Manual functions for testing =====
+globalThis.saveModeStates = saveModeStates;
+globalThis.loadModeStates = loadModeStates;
 
 // ===== Main =====
 jQuery(() => {
