@@ -85,6 +85,8 @@ A featherweight extension that gives you a microchip button with a stack of deli
 
 ## Installation
 
+Use the repo url on the Extensions -> Install extension popup.
+
 `https://github.com/dfaker/st-mode-toggles`
 
 Notes:
