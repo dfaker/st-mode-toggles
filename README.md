@@ -7,7 +7,7 @@ A featherweight extension that gives you a microchip button with a stack of deli
 ## Features
 
 - One-click vibe flips
-  - A floating `fa-microchip` menu button is added to the SillyTavern top bar.
+  - A `microchip` menu button is added bext to the Guided Generations button.
   - Click to open a compact `gg-tools-menu` with all modes.
 
 - Clear, color-coded states
@@ -72,11 +72,6 @@ A featherweight extension that gives you a microchip button with a stack of deli
 - `Split-Screen Fate`: Two timelines you can cross-influence.
 
 ## How it works
-
-- UI:
-  - A `div#modtog_menu_button.gg-menu-button.fa-solid.fa-microchip` is injected into `#gg-menu-buttons-container`.
-  - Clicking it opens a `div#modtog_tools_menu.gg-tools-menu` listing all modes.
-  - Each mode click cycles: `OFF` → `Activating` → `OFF` … and `ON` → `Deactivating` → `ON` …
 
 - Prompt interception:
   - `globalThis.modTogPromptInterceptor(chat, contextSize, abort, type)` finds all `ON`, `Activating`, and `Deactivating` modes.
