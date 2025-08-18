@@ -38,9 +38,28 @@ let modes = [
 
     { name: 'Trial by Gossip', description: "Rumor tribunals form after major beats. Crowd sentiment passes sentence: fines, favors, or other punishments.", status: "OFF" },
 
-    { name: 'Split-Screen Fate', description: "Two timelines run concurrently, visible side-by-side. Swap items, body-block disasters, or let one future bait traps for the other.", status: "OFF" }
+    { name: 'Split-Screen Fate', description: "Two timelines run concurrently, visible side-by-side. Swap items, body-block disasters, or let one future bait traps for the other.", status: "OFF" },
+
+    { name: 'Dual-Process Undercurrent', description: "Silent Mode1/Mode2 metacognition powers every major character. Fast hunches steer snap checks; slow reasoning accrues ‘insight ticks’ between scenes. Starving one system builds pressure that bursts as either brilliant leaps or panic stalls.", status: "OFF" },
+
+    { name: 'Desire Gradient', description: "Hidden desire vectors (belonging, novelty, mastery, status, safety) tug characters toward choices. Nudge axes via gifts, scenes, or rumors; aligned vectors reduce DCs, crossed vectors spawn sabotage and delicious mess.", status: "OFF" },
+
+    { name: 'Goal Manifold', description: "Each character tracks a private goal stack with priorities and horizons. You can reorder it indirectly (deadlines, omens, rituals). Collisions generate emergent side quests instead of straight conflict.", status: "OFF" },
+
+    { name: 'Rumination Threads', description: "Characters think offscreen. Between scenes, they integrate clues, revise loyalties, and hatch plans. Longer ruminations yield deeper insights—but risk outdated conclusions if the world moves on.", status: "OFF" },
+
+    { name: 'Temptation Hooks', description: "Each character carries bespoke temptations (flattery, shortcuts, rival offers). Accept for immediate juice and arc drift; refuse to earn bankable ‘integrity’ for a single dramatic veto.", status: "OFF" },
+
+    { name: 'Shadow Intent', description: "Beneath stated goals lies a quiet ‘true want’. Infer it from patterns; meeting it earns fanatic loyalty for one ask, after which the intent reshapes.", status: "OFF" },
+
+    { name: 'Inner Committee', description: "Key NPCs host archetypal voices (Pragmatist, Romantic, Cynic, Caretaker). Address the right voice for bonuses; elevating one voice yields predictable allies—or monomaniacs.", status: "OFF" },
+
+    { name: 'Bias Surfacing', description: "Characters periodically reveal a cognitive bias as flavor. Exploit it to lower DCs when framing choices that flatter the bias—or cure it for a long-term competence boost.", status: "OFF" },
+
+    { name: 'Plot Immunity Auction', description: "At chapter breaks, characters secretly bid scarce plot armor. Influence bids via morale, leverage, or blackmail. Winners survive reckoning scenes; losers become stakes with better loot.", status: "OFF" }
 
 ];
+
 
 
 import {
@@ -55,6 +74,9 @@ import { Popup, POPUP_TYPE, POPUP_RESULT } from "../../../popup.js";
 
 let modTogToolsMenu;
 let lastClickPosition = { x: 0, y: 0 };
+
+// ===== NEW: Track which modes have been toggled =====
+let toggledModes = new Set(); // Track modes that have been explicitly toggled
 
 // ===== NEW: Persistence System =====
 const EXTENSION_NAME = 'st-mode-toggles';
@@ -397,13 +419,21 @@ function saveModeStates() {
       extension_settings[EXTENSION_NAME].chatStates = {};
     }
     
-    // Save current mode states
+    // CHANGE 1: Only save modes that have been toggled
     const modeStates = {};
     modes.forEach(mode => {
-      modeStates[mode.name] = mode.status;
+      if (toggledModes.has(mode.name)) {
+        modeStates[mode.name] = mode.status;
+      }
     });
     
-    extension_settings[EXTENSION_NAME].chatStates[chatId] = modeStates;
+    // Only save if there are toggled modes, otherwise delete the chat state
+    if (Object.keys(modeStates).length > 0) {
+      extension_settings[EXTENSION_NAME].chatStates[chatId] = modeStates;
+    } else {
+      delete extension_settings[EXTENSION_NAME].chatStates[chatId];
+    }
+    
     saveSettingsDebounced();
     
     console.log(`Saved mode states for chat ${chatId}:`, modeStates);
@@ -422,12 +452,18 @@ function loadModeStates() {
     if (savedStates) {
       console.log(`Loading mode states for chat ${chatId}:`, savedStates);
       
-      // Apply saved states to modes
+      // Reset all modes to OFF first
       modes.forEach(mode => {
-        if (savedStates.hasOwnProperty(mode.name)) {
-          mode.status = savedStates[mode.name];
-        } else {
-          mode.status = 'OFF'; // Default for new modes
+        mode.status = 'OFF';
+      });
+      
+      // Apply saved states and mark as toggled
+      toggledModes.clear();
+      Object.keys(savedStates).forEach(modeName => {
+        const mode = modes.find(m => m.name === modeName);
+        if (mode) {
+          mode.status = savedStates[modeName];
+          toggledModes.add(modeName);
         }
       });
       
@@ -445,6 +481,7 @@ function loadModeStates() {
       modes.forEach(mode => {
         mode.status = 'OFF';
       });
+      toggledModes.clear();
       updateMenuTitle();
       updateModTogToolsMenu();
     }
@@ -472,6 +509,9 @@ function updateMenuTitle() {
 function toggleModeStatus(modeName) {
   const mode = modes.find(m => m.name === modeName);
   if (mode) {
+    // Mark this mode as toggled
+    toggledModes.add(modeName);
+    
     switch (mode.status) {
       case 'OFF':
         mode.status = 'Activating';
@@ -776,17 +816,23 @@ function createModTogToolsMenu() {
 globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, type) {
   console.log("Mode toggle prompt interceptor triggered");
   
-  const activeModes = modes.filter(mode => 
-    mode.status === 'ON' || mode.status === 'Activating' || mode.status === 'Deactivating'
-  );
+  const chatId = getCurrentChatId();
+  const savedStates = extension_settings[EXTENSION_NAME]?.chatStates?.[chatId] || {};
   
-  if (activeModes.length > 0 && chat.length > 0) {
-    const modeLines = activeModes.map(mode => {
+  // CHANGE 2: Include modes that are currently active OR were previously active (in saved states but now OFF)
+  const modesToInclude = modes.filter(mode => {
+    const isCurrentlyActive = mode.status === 'ON' || mode.status === 'Activating' || mode.status === 'Deactivating';
+    const wasPreviouslyActive = savedStates.hasOwnProperty(mode.name) && mode.status === 'OFF';
+    return isCurrentlyActive || wasPreviouslyActive;
+  });
+  
+  if (modesToInclude.length > 0 && chat.length > 0) {
+    const modeLines = modesToInclude.map(mode => {
       let displayStatus = mode.status;
       if (mode.status === 'Activating') displayStatus = 'ON';
       if (mode.status === 'Deactivating') displayStatus = 'OFF';
       
-      return `[${mode.name} ${displayStatus}] - ${mode.description}`;
+      return  `[${mode.name} ${displayStatus}] - (Effect when ON = "${mode.description}", should be removed when OFF)`;
     });
     
     const prefix = modeLines.join('\n') + '\n\n';
