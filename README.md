@@ -2,6 +2,8 @@
 
 A featherweight extension that gives you a microchip button with a stack of deliciously chaotic “modes” (Noir Echo, Silent Scream, Innuendo Engine, etc.). Flip them on; the extension prepends succinct meta-lines to your next user message so your model steers into the vibe you chose. It’s fast, UI-friendly, and gloriously extra.
 
+<img width="1713" height="745" alt="image" src="https://github.com/user-attachments/assets/004885a7-5706-4c45-aa0a-a2b210b0c431" />
+
 ## Features
 
 - One-click vibe flips
