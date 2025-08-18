@@ -1,6 +1,6 @@
 
 let modes = [
-    { name: 'Noir Echo ON', description: "Shadowy, cyberpunk-inspired despair. Everything is rain-slick metal and neon betrayal.", status: "OFF" },
+    { name: 'Noir Echo', description: "Shadowy, cyberpunk-inspired despair. Everything is rain-slick metal and neon betrayal.", status: "OFF" },
 
     { name: 'Silent Scream', description: "Psychological horror, isolation, and unseen threats. Fear is slow-burning and deeply personal.", status: "OFF" },
 
@@ -12,25 +12,13 @@ let modes = [
 
     { name: 'Rashomon Effect', description: "Perspectives fracture, each scene retold from conflicting viewpoints.", status: "OFF" },
 
-    { name: 'Gravitas Lock', description: "No quips, no levity. Stakes feel heavier, failures spiral.", status: "OFF" },
-
     { name: 'Echoed Futures', description: "Brief premonitions overlay scenes with probable outcomes. Ignoring them risks self-fulfilling disasters.", status: "OFF" },
-
-    { name: 'Glitch-Veil', description: "Reality suffers rendering errors: clipping corridors, missing textures, NPCs stutter.", status: "OFF" },
 
     { name: 'Bureaucracy Ascendant', description: "Permits, stamps, and queue tickets govern everything. Timed forms, bribes, and rubber stamps unlock progress.", status: "OFF" },
 
-    { name: 'Murmur Net', description: "Rumors rewrite reality. What people believe alters entities, locations, and behavior—curate the narrative.", status: "OFF" },
-
-    { name: 'The Sun Is Sick', description: "Day lengths wobble; solar bursts scramble tech and cognition.", status: "OFF" },
-
     { name: 'Dreamwalk Threshold', description: "Sleep opens a shared dream commons. Actions there echo into waking terrain and relationships.", status: "OFF" },
 
-    { name: 'Blood Debt Ledger', description: "Harm adds entries to a cosmic ledger. Interest accrues as misfortune until settled with acts or offerings.", status: "OFF" },
-
-    { name: 'Knife of Ockham', description: "Simple plans gain mechanical bonuses. Overcomplication earns penalties and fate’s contempt.", status: "OFF" },
-
-    { name: 'Velvet Hour', description: "Lighting shifts to candlelit and velvet hues. Social hubs sprout lounges; flirting and dancing grant temporary buffs and shortcuts through faction gates.", status: "OFF" },
+    { name: 'Velvet Hour', description: "Lighting shifts to candlelit and velvet hues. Social hubs sprout lounges; flirting and dancing abound.", status: "OFF" },
 
     { name: 'Innuendo Engine', description: "Dialogue tilts suggestive. Double entendres unlock alternate quest solutions and secret vendors who only respond to clever wordplay.", status: "OFF" },
 
@@ -44,33 +32,16 @@ let modes = [
 
     { name: 'Subtitle Saboteur', description: "Subtitles editorialize, spoil, or contradict the scene. Believing the captions alters encounter stats; ignoring them angers the captions.", status: "OFF" },
 
-    { name: 'Save-Scum Echo', description: "Reality remembers reloads. NPCs feel déjà vu, traps adapt, and your past choices leave faint afterimages you can interrogate.", status: "OFF" },
-
-    { name: 'UI Made Flesh', description: "Health bars, quest markers, and cursors manifest as physical entities. You can hide, steal, or sabotage them to change outcomes.", status: "OFF" },
-
     { name: 'Narrator Hot Mic', description: "The narrator can hear you—and vice versa. Compliment them for boons, sass them and get roasted debuffs and fourth-wall hazards.", status: "OFF" },
-
-    { name: 'Red Curtain Interlude', description: "A plush theater curtain drops between tense beats. Choose intermission acts—monologue, tango, costume change—to gain tailored buffs.", status: "OFF" },
 
     { name: 'Chekhov’s Arsenal', description: "Any item prominently introduced in a scene will forcibly matter later. Ignoring it spawns escalating set-piece payoffs.", status: "OFF" },
 
-    { name: 'Bardic Reality', description: "Music is diegetic. Changing the soundtrack alters buffs, enemy patterns, and weather. Conductors become power brokers.", status: "OFF" },
-
-    { name: 'Mirror Law', description: "Mirrors are portals and judges. Step through to inverted spaces; your reflection acts with delayed, sometimes disobedient intent.", status: "OFF" },
-
-    { name: 'Palimpsest Layers', description: "Past versions of locations bleed through. Peel, stitch, or graft map-layers to reveal secrets or erase hazards.", status: "OFF" },
-
-    { name: 'Trial by Gossip', description: "Rumor tribunals form after major beats. Crowd sentiment passes sentence: fines, favors, or forced sidequests.", status: "OFF" },
-
-    { name: 'Mask Census', description: "Everyone chooses a mask that confers a mechanical role. Changing masks rewrites social ties and faction access.", status: "OFF" },
-
-    { name: 'Stormglass Morality', description: "Your choices manifest as weather. Mercy brings soft rain that heals the road; cruelty brews hail that shreds supply lines.", status: "OFF" },
-
-    { name: 'Echo of Names', description: "Naming a thing alters it. Bestow titles to upgrade allies or hex foes; renamed places develop new rules.", status: "OFF" },
+    { name: 'Trial by Gossip', description: "Rumor tribunals form after major beats. Crowd sentiment passes sentence: fines, favors, or other punishments.", status: "OFF" },
 
     { name: 'Split-Screen Fate', description: "Two timelines run concurrently, visible side-by-side. Swap items, body-block disasters, or let one future bait traps for the other.", status: "OFF" }
 
 ];
+
 
 import {
   Generate,
@@ -310,16 +281,47 @@ function exportModes() {
 
 async function showImportDialog() {
   try {
-    const result = await Popup.show.input(
-      'Import Modes',
-      'Paste modes in format "Name - Description" (one per line):',
-      '',
-      {
-        rows: 10,
-        okButton: 'Import',
-        cancelButton: 'Cancel'
-      }
-    );
+    // Create a hidden file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt,.text,text/plain';
+    fileInput.style.display = 'none';
+    
+    // Add to document temporarily
+    document.body.appendChild(fileInput);
+    
+    // Create a promise to handle file selection
+    const filePromise = new Promise((resolve, reject) => {
+      fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            resolve(e.target.result);
+          };
+          reader.onerror = (e) => {
+            reject(new Error('Failed to read file'));
+          };
+          reader.readAsText(file);
+        } else {
+          resolve(null); // User cancelled
+        }
+      });
+      
+      // Timeout after 30 seconds to prevent hanging
+      setTimeout(() => {
+        resolve(null);
+      }, 30000);
+    });
+    
+    // Trigger the file dialog
+    fileInput.click();
+    
+    // Wait for file selection and reading
+    const result = await filePromise;
+    
+    // Clean up
+    document.body.removeChild(fileInput);
     
     if (result !== null && result.trim() !== '') {
       const lines = result.split('\n').map(line => line.trim()).filter(line => line);
@@ -363,17 +365,22 @@ async function showImportDialog() {
       
       if (window.toastr) {
         if (importedCount > 0) {
-          toastr.success(`Imported ${importedCount} mode(s)`, 'Mode Toggle');
+          toastr.success(`Imported ${importedCount} mode(s) from file`, 'Mode Toggle');
         }
         if (errorCount > 0) {
           toastr.warning(`${errorCount} line(s) skipped due to format errors`, 'Mode Toggle');
         }
       }
+    } else if (result === null) {
+      // User cancelled or no file selected
+      if (window.toastr) {
+        toastr.info('Import cancelled', 'Mode Toggle');
+      }
     }
   } catch (error) {
     console.error("Error importing modes:", error);
     if (window.toastr) {
-      toastr.error('Error importing modes', 'Mode Toggle');
+      toastr.error('Error importing modes from file', 'Mode Toggle');
     }
   }
 }
@@ -666,7 +673,7 @@ function addMenuButton() {
           
           modTogToolsMenu.style.display = 'block';
           modTogToolsMenu.style.position = 'fixed';
-          modTogToolsMenu.style.zIndex = '9999';
+          modTogToolsMenu.style.zIndex = '99999';
           
           updateModTogToolsMenu();
           repositionMenu();
@@ -679,6 +686,72 @@ function addMenuButton() {
     }
   }
   return false;
+}
+
+function addExtensionMenuButton() {
+  // Select the Extensions dropdown menu
+  let $extensions_menu = $('#extensionsMenu');
+  if (!$extensions_menu.length) {
+    return;
+  }
+  
+  // Check if button already exists
+  if ($extensions_menu.find('[data-extension="mode-toggles"]').length > 0) {
+    return;
+  }
+  
+  // Create button element with microchip icon and extension name
+  let $button = $(`
+    <div class="list-group-item flex-container flexGap5 interactable" 
+         title="Open Mode Toggles Menu" 
+         data-i18n="[title]Open Mode Toggles Menu" 
+         data-extension="mode-toggles"
+         tabindex="0">
+        <i class="fa-solid fa-microchip"></i>
+        <span>Mode Toggles</span>
+    </div>
+  `);
+  
+  // Append to extensions menu
+  $button.appendTo($extensions_menu);
+  
+  // Set click handler to open the mode toggles menu
+  $button.click((e) => {
+    e.stopPropagation();
+    
+    // Position menu near the extensions menu button
+    const extensionsButton = document.querySelector('#extensionsMenuButton');
+    if (extensionsButton) {
+      const rect = extensionsButton.getBoundingClientRect();
+      lastClickPosition.x = rect.right;
+      lastClickPosition.y = rect.bottom;
+    } else {
+      // Fallback positioning
+      lastClickPosition.x = window.innerWidth / 2;
+      lastClickPosition.y = window.innerHeight / 2;
+    }
+    
+    if (!modTogToolsMenu) {
+      createModTogToolsMenu();
+    }
+    
+    // Close extensions menu
+    $('#extensionsMenu').removeClass('show');
+    
+    // Show mode toggles menu
+    document.querySelectorAll('.gg-tools-menu').forEach(menu => {
+      if (menu !== modTogToolsMenu) {
+        menu.style.display = 'none';
+      }
+    });
+    
+    modTogToolsMenu.style.display = 'block';
+    modTogToolsMenu.style.position = 'fixed';
+    modTogToolsMenu.style.zIndex = '99999';
+    
+    updateModTogToolsMenu();
+    repositionMenu();
+  });
 }
 
 function createModTogToolsMenu() {
@@ -748,6 +821,13 @@ async function initSettings() {
   
   setTimeout(setupEventListeners, 1000);
   
+  // Add extension menu button using DOMContentLoaded pattern
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addExtensionMenuButton);
+  } else {
+    addExtensionMenuButton();
+  }
+  
   const observer = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       if (mutation.type === 'childList') {
@@ -759,6 +839,13 @@ async function initSettings() {
                 observer.disconnect();
                 return;
               }
+            }
+            // Also try to add extension menu button when extensions menu is added
+            if (node.id === 'extensionsMenu' || 
+                node.querySelector('#extensionsMenu')) {
+              setTimeout(() => {
+                addExtensionMenuButton();
+              }, 100);
             }
           }
         }
@@ -778,6 +865,7 @@ globalThis.loadModeStates = loadModeStates;
 globalThis.showAddEditModeDialog = showAddEditModeDialog;
 globalThis.exportModes = exportModes;
 globalThis.showImportDialog = showImportDialog;
+globalThis.addExtensionMenuButton = addExtensionMenuButton;
 
 // ===== Main =====
 jQuery(() => {
