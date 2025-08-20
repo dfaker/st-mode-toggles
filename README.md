@@ -7,7 +7,7 @@ An extension that gives you a microchip button with a stack of deliciously chaot
 ## Features
 
 - One-click vibe flips
-  - A `microchip` menu button is added bext to the Guided Generations button.
+  - A `microchip` menu button is added bext to the Guided Generations button (Alterantively in the extensions menu).
   - Click to open a compact `gg-tools-menu` with all modes.
 
 - Clear, color-coded states
