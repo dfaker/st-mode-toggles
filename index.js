@@ -4,7 +4,7 @@ import {
   saveSettingsDebounced,
 } from "../../../../script.js";
 import { renderExtensionTemplateAsync, extension_settings } from "../../../extensions.js";
-import { Popup, POPUP_RESULT } from "../../../popup.js";
+import { Popup, POPUP_RESULT, POPUP_TYPE} from "../../../popup.js";
 
 
 function deepFreeze(o) {
@@ -22,6 +22,39 @@ const DEFAULT_MERGE_FORMAT = '[{{modeName}} {{displayStatus}}] - (Effect when ON
 const DEFAULT_POST_FRAMING = 'No reference should be made to the presence of these modifier modes inside the chat, only their effects.';
 const DEFAULT_OFF_COUNTDOWN = 5; // per-message countdown once a mode is turned OFF
 
+const schedule_html_template = `
+<div id="modtog_schedule_interface">
+  <div class="justifyspacebetween alignitemscenter">
+      <h3>Mode Scheduling</h3>
+  </div>
+  <div class="justifyLeft">
+    <small id="mask-help">
+      Each character in the mask corresponds to one message in the cycle.  
+      <div>• <strong>X</strong> = 100% (always active)</div>  
+      <div>• <strong>-</strong> or <strong>0</strong> = 0% (never active)</div>  
+      <div>• <strong>1–9</strong> = probability ×10% (e.g. <code>5</code> = 50%, <code>7</code> = 70%)</div>  
+      <div>The mask repeats in a loop; its length sets the cycle.</div>
+      <div>– <code>X--</code> = every 3rd message, always.</div>
+      <div>– <code>5-5-</code> = every other message has a 50% chance.</div>  
+      <div>– <code>1XXX</code> = 10% chance on first message, then 3 guaranteed active.</div>  
+    </small>
+  </div>
+
+  <div>
+      <table id="schedule_config_table" class="responsiveTable" style="word-break: break-all";>
+          <thead>
+              <tr>
+                  <th>Mode</th>
+                  <th>Schedule</th>
+              </tr>
+          </thead>
+          <tbody id="mod_tod_sched_table">
+          </tbody>
+      </table>
+  </div>
+</div>
+`
+
 let DEFAULT_MODES_RAW = [];
 let DEFAULT_MODES = [];
 
@@ -34,9 +67,9 @@ let modTogToolsMenuContent;
 let modTogSearchInput;
 let currentSearchQuery = '';
 
+let tick = 0;
+
 let modTogResizeObserver;
-
-
 
 async function loadDefaultModesFromAssets() {
   const all = [];
@@ -616,6 +649,8 @@ function toggleModeStatus(modeName) {
 
   state[modeName] = { status: next };
   if (nextCountdown !== undefined) state[modeName].countdown = nextCountdown;
+  if (state[modeName].schedule === undefined) state[modeName].schedule = 'X';
+
 
   saveSettingsDebounced();
   updateMenuTitle();
@@ -920,6 +955,7 @@ function makeModeButton(mode) {
   button.style.padding = '8px 12px';
   button.style.borderBottom = '1px solid #333';
   button.style.fontSize = 'small';
+  button.title = 'Click to toggle, Ctrl-Click to Edit';
 
   button.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1051,6 +1087,79 @@ function activateRandomMode() {
 }
 
 
+function scheduleOnClosing(popup){
+  console.log(popup);
+  const chatId = getCurrentChatId();
+  const state = getChatState(chatId);
+
+  jQuery(popup.content).find('input').each(function(i,e){
+    if(e.dataset.mode in state){
+
+      let val = e.value.toUpperCase().replace(/[^\-X0-9]/g, '');
+      if(!val){
+        val = 'X';
+      }
+
+      state[e.dataset.mode].schedule = val;
+    }
+  })
+
+  return true;
+}
+
+
+function editSchedules(){
+  let popup = new Popup(schedule_html_template, POPUP_TYPE.TEXT, undefined, {wider: true, okButton: 'Save', cancelButton: 'Cancel', onClose: scheduleOnClosing});
+
+  let content = jQuery(popup.content)
+
+  const chatId = getCurrentChatId();
+  const state = getChatState(chatId);  
+  const view = getModesView(chatId);
+  const modesToInclude = view.filter(m => {
+    return (m.status === 'ON' || m.status === 'Activating');;
+  });
+
+  let row_html =`
+  <tr>
+    <td>
+        <div class="justifyLeft">
+            <strong>{{modeName}} ({{displayStatus}})</strong>
+            <div>{{modeDescription}}</div>
+        </div>
+    </td>
+    <td>
+        <div class="flex-container flexFlowColumn">
+            <input type="text" data-mode="{{modeName}}" class="text_pole" value="{{schedule}}">
+        </div>
+    </td>
+  </tr>`
+
+  
+
+  const lines = modesToInclude.map(m => {
+    return row_html
+      .replaceAll('{{modeName}}', m.name)
+      .replaceAll('{{displayStatus}}', m.status)
+      .replaceAll('{{modeDescription}}', m.description)
+      .replaceAll('{{schedule}}', state[m.name].schedule || 'X');
+  });
+
+  globalThis.modcontent = content
+  globalThis.modlines   = lines
+
+  content.find('#mod_tod_sched_table').html(jQuery(lines.join('\n')));
+
+  content.find('input').on('input', function() {
+    let inputValue = $(this).val().toUpperCase();
+    let cleanedValue = inputValue.replace(/[^\-X0-9]/g, '');
+    $(this).val(cleanedValue);
+  });
+
+  popup.show();
+}
+
+
 function makeImportExportButtons() {
   const importExportContainer = document.createElement('div');
   importExportContainer.style.display = 'flex';
@@ -1066,7 +1175,7 @@ function makeImportExportButtons() {
   exportButton.className = 'gg-tools-menu-item interactable';
   exportButton.innerHTML = '<strong>📤 Export</strong>';
   exportButton.style.cursor = 'pointer';
-  exportButton.style.padding = '6px 8px';
+  exportButton.style.padding = '4px 8px';
   exportButton.style.fontSize = 'small';
   exportButton.style.backgroundColor = 'rgba(0, 128, 0, 0.1)';
   exportButton.style.color = '#90EE90';
@@ -1082,7 +1191,7 @@ function makeImportExportButtons() {
   importButton.className = 'gg-tools-menu-item interactable';
   importButton.innerHTML = '<strong>📥 Import</strong>';
   importButton.style.cursor = 'pointer';
-  importButton.style.padding = '6px 8px';
+  importButton.style.padding = '4px 8px';
   importButton.style.fontSize = 'small';
   importButton.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
   importButton.style.color = '#FFA500';
@@ -1106,7 +1215,7 @@ function makeImportExportButtons() {
   disableAllButton.className = 'gg-tools-menu-item interactable';
   disableAllButton.innerHTML = '<strong>🚫 Disable All</strong>';
   disableAllButton.style.cursor = 'pointer';
-  disableAllButton.style.padding = '6px 8px';
+  disableAllButton.style.padding = '4px 8px';
   disableAllButton.style.fontSize = 'small';
   disableAllButton.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
   disableAllButton.style.color = '#FF6B6B';
@@ -1119,9 +1228,9 @@ function makeImportExportButtons() {
   
   const activateRandomButton = document.createElement('div');
   activateRandomButton.className = 'gg-tools-menu-item interactable';
-  activateRandomButton.innerHTML = '<strong>🎲 Random</strong>';
+  activateRandomButton.innerHTML = '<strong>🎲 Add Random</strong>';
   activateRandomButton.style.cursor = 'pointer';
-  activateRandomButton.style.padding = '6px 8px';
+  activateRandomButton.style.padding = '4px 8px';
   activateRandomButton.style.fontSize = 'small';
   activateRandomButton.style.backgroundColor = 'rgba(128, 0, 128, 0.1)';
   activateRandomButton.style.color = '#DA70D6';
@@ -1132,8 +1241,24 @@ function makeImportExportButtons() {
     e.stopPropagation();
   });
   
+  const scheduleButton = document.createElement('div');
+  scheduleButton.className = 'gg-tools-menu-item interactable';
+  scheduleButton.innerHTML = '<strong>📅 Schedule</strong>';
+  scheduleButton.style.cursor = 'pointer';
+  scheduleButton.style.padding = '4px 8px';
+  scheduleButton.style.fontSize = 'small';
+  scheduleButton.style.backgroundColor = 'rgba(137, 112, 218, 0.1)';
+  scheduleButton.style.color = '#8970da';
+  scheduleButton.style.textAlign = 'center';
+  scheduleButton.style.flex = '1';
+  scheduleButton.addEventListener('click', (e) => {
+    editSchedules();
+    e.stopPropagation();
+  });
+
   secondRow.appendChild(disableAllButton);
   secondRow.appendChild(activateRandomButton);
+  secondRow.appendChild(scheduleButton);
   
   // Add both rows to the container
   importExportContainer.appendChild(firstRow);
@@ -1221,11 +1346,13 @@ function setupEventListeners() {
 
     eventSource.on(event_types.CHAT_CHANGED, () => {
       console.log("Chat changed - loading mode states");
+      tick=0;
       setTimeout(loadModeStates, 100);
     });
 
     eventSource.on(event_types.APP_READY, () => {
       console.log("App ready - initial load");
+      tick=0;
       setTimeout(() => {
         loadModeOverrides();
         loadModeStates();
@@ -1237,7 +1364,6 @@ function setupEventListeners() {
     console.error("Error setting up event listeners:", error);
   }
 }
-
 
 
 
@@ -1264,10 +1390,20 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
       let displayStatus = m.status;
       if (displayStatus === 'Activating') displayStatus = 'ON';
       if (displayStatus === 'Deactivating') displayStatus = 'OFF';
+
+      let schedule = m.schedule || 'X';
+      let tickValue = schedule[tick%schedule.length]
+      let prob = tickValue.replace('X','10').replace('-','0')*10;
+      let active = Math.round(Math.random()*100) <= prob;
+
+      if(displayStatus === 'ON' && !active){
+        displayStatus = 'OFF';
+      }
+
       return mergeFormat
-        .replace('{{modeName}}', m.name)
-        .replace('{{displayStatus}}', displayStatus)
-        .replace('{{modeDescription}}', m.description);
+        .replaceAll('{{modeName}}', m.name)
+        .replaceAll('{{displayStatus}}', displayStatus)
+        .replaceAll('{{modeDescription}}', m.description);
     });
 
     const pre = (settings.preFraming ?? DEFAULT_PRE_FRAMING).trim();
@@ -1277,6 +1413,7 @@ globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, ty
     const lastMessage = chat[chat.length - 1];
     if (lastMessage?.is_user) {
       lastMessage.mes = prefix + lastMessage.mes;
+      tick++;
     }
   }
 
