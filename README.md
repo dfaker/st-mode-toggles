@@ -26,8 +26,11 @@ An extension that gives you a microchip button with a stack of deliciously chaot
 
 - Adding new modes, and Import and Export of your customizations is avaliable at the very bottom of the menu:
 
-<img width="485" height="546" alt="image" src="https://github.com/user-attachments/assets/bdad9f81-b4e4-441d-b08a-b5c2357f570d" />
+<img width="481" height="573" alt="image" src="https://github.com/user-attachments/assets/0a79a263-769b-4067-8dd2-fa01f08bc48e" />
 
+- Schedules provide the ability to make modes rarer, or apply them probablistically, want to have a 40% percent chance of your every command occasionally being irrisitible once every 11 messages? Fine:
+
+<img width="775" height="450" alt="image" src="https://github.com/user-attachments/assets/aaf2c68c-e72d-4270-960e-4abc6072c865" />
 
 ## Installation
 
