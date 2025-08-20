@@ -1,94 +1,145 @@
 
-let modes = [
-    { name: 'Noir Echo', description: "Shadowy, cyberpunk-inspired despair. Everything is rain-slick metal and neon betrayal.", status: "OFF" },
-
-    { name: 'Silent Scream', description: "Psychological horror, isolation, and unseen threats. Fear is slow-burning and deeply personal.", status: "OFF" },
-
-    { name: 'Dialogue Cheese', description: "Purposely bad one-liners (\"I'd flirt, but your ship's hotter than plasma exhaust.\").", status: "OFF" },
-
-    { name: 'Terminal Logic', description: "Unseen AI calculates mortality rates aloud during crises.", status: "OFF" },
-
-    { name: 'Veil of Shadows', description: "Supernatural mystery: half-seen figures, whispering winds, and cursed relics.", status: "OFF" },
-
-    { name: 'Rashomon Effect', description: "Perspectives fracture, each scene retold from conflicting viewpoints.", status: "OFF" },
-
-    { name: 'Echoed Futures', description: "Brief premonitions overlay scenes with probable outcomes. Ignoring them risks self-fulfilling disasters.", status: "OFF" },
-
-    { name: 'Bureaucracy Ascendant', description: "Permits, stamps, and queue tickets govern everything. Timed forms, bribes, and rubber stamps unlock progress.", status: "OFF" },
-
-    { name: 'Dreamwalk Threshold', description: "Sleep opens a shared dream commons. Actions there echo into waking terrain and relationships.", status: "OFF" },
-
-    { name: 'Velvet Hour', description: "Lighting shifts to candlelit and velvet hues. Social hubs sprout lounges; flirting and dancing abound.", status: "OFF" },
-
-    { name: 'Innuendo Engine', description: "Dialogue tilts suggestive. Double entendres unlock alternate quest solutions and secret vendors who only respond to clever wordplay.", status: "OFF" },
-
-    { name: 'Censor Pixies', description: "Mischievous black bars and mosaic sprites flit about. They transform wardrobe malfunctions into slapstick hazards and can be herded to reveal secrets.", status: "OFF" },
-
-    { name: 'Blush Meter', description: "Characters manifest visible blush gauges. High blush adds social crit chance and awkward fumbles; controlling it becomes a minigame.", status: "OFF" },
-
-    { name: 'Gag Reel Spillover', description: "Outtakes bleed into reality. NPCs break, laugh, reset, and drop items labeled ‘prop’. These props have odd, exploitable rules.", status: "OFF" },
-
-    { name: 'Developer Commentary', description: "Floating dev-notes appear near set pieces, revealing hints, cut content, and togglable challenge modifiers hidden behind commentary badges.", status: "OFF" },
-
-    { name: 'Subtitle Saboteur', description: "Subtitles editorialize, spoil, or contradict the scene. Believing the captions alters encounter stats; ignoring them angers the captions.", status: "OFF" },
-
-    { name: 'Narrator Hot Mic', description: "The narrator can hear you—and vice versa. Compliment them for boons, sass them and get roasted debuffs and fourth-wall hazards.", status: "OFF" },
-
-    { name: 'Chekhov’s Arsenal', description: "Any item prominently introduced in a scene will forcibly matter later. Ignoring it spawns escalating set-piece payoffs.", status: "OFF" },
-
-    { name: 'Trial by Gossip', description: "Rumor tribunals form after major beats. Crowd sentiment passes sentence: fines, favors, or other punishments.", status: "OFF" },
-
-    { name: 'Split-Screen Fate', description: "Two timelines run concurrently, visible side-by-side. Swap items, body-block disasters, or let one future bait traps for the other.", status: "OFF" },
-
-    { name: 'Dual-Process Undercurrent', description: "Silent Mode1/Mode2 metacognition powers every major character. Fast hunches steer snap checks; slow reasoning accrues ‘insight ticks’ between scenes. Starving one system builds pressure that bursts as either brilliant leaps or panic stalls.", status: "OFF" },
-
-    { name: 'Desire Gradient', description: "Hidden desire vectors (belonging, novelty, mastery, status, safety) tug characters toward choices. Nudge axes via gifts, scenes, or rumors; aligned vectors reduce DCs, crossed vectors spawn sabotage and delicious mess.", status: "OFF" },
-
-    { name: 'Goal Manifold', description: "Each character tracks a private goal stack with priorities and horizons. You can reorder it indirectly (deadlines, omens, rituals). Collisions generate emergent side quests instead of straight conflict.", status: "OFF" },
-
-    { name: 'Rumination Threads', description: "Characters think offscreen. Between scenes, they integrate clues, revise loyalties, and hatch plans. Longer ruminations yield deeper insights—but risk outdated conclusions if the world moves on.", status: "OFF" },
-
-    { name: 'Temptation Hooks', description: "Each character carries bespoke temptations (flattery, shortcuts, rival offers). Accept for immediate juice and arc drift; refuse to earn bankable ‘integrity’ for a single dramatic veto.", status: "OFF" },
-
-    { name: 'Shadow Intent', description: "Beneath stated goals lies a quiet ‘true want’. Infer it from patterns; meeting it earns fanatic loyalty for one ask, after which the intent reshapes.", status: "OFF" },
-
-    { name: 'Inner Committee', description: "Key NPCs host archetypal voices (Pragmatist, Romantic, Cynic, Caretaker). Address the right voice for bonuses; elevating one voice yields predictable allies—or monomaniacs.", status: "OFF" },
-
-    { name: 'Bias Surfacing', description: "Characters periodically reveal a cognitive bias as flavor. Exploit it to lower DCs when framing choices that flatter the bias—or cure it for a long-term competence boost.", status: "OFF" },
-
-    { name: 'Plot Immunity Auction', description: "At chapter breaks, characters secretly bid scarce plot armor. Influence bids via morale, leverage, or blackmail. Winners survive reckoning scenes; losers become stakes with better loot.", status: "OFF" }
-
-];
 
 import {
-  Generate,
-  extension_prompt_types,
-  sendMessageAsUser,
-  setExtensionPrompt,
   saveSettingsDebounced,
 } from "../../../../script.js";
 import { renderExtensionTemplateAsync, extension_settings } from "../../../extensions.js";
-import { Popup, POPUP_TYPE, POPUP_RESULT } from "../../../popup.js";
+import { Popup, POPUP_RESULT } from "../../../popup.js";
+
+
+function deepFreeze(o) {
+  Object.freeze(o);
+  if (Array.isArray(o)) o.forEach(x => typeof x === 'object' && x !== null && deepFreeze(x));
+  else if (typeof o === 'object' && o !== null) Object.values(o).forEach(x => typeof x === 'object' && x !== null && deepFreeze(x));
+  return o;
+}
+
+
+// ===== Constants =====
+const EXTENSION_NAME = 'st-mode-toggles';
+const DEFAULT_PRE_FRAMING = 'Current Active or now Disabled non-diegetic modifier modes:\n(ON = world rule applies. OFF = no effect; earlier mentions are non-canon.)\n\n';
+const DEFAULT_MERGE_FORMAT = '[{{modeName}} {{displayStatus}}] - (Effect when ON "{{modeDescription}}", should be removed when OFF)';
+const DEFAULT_POST_FRAMING = 'No reference should be made to the presence of these modifier modes inside the chat, only their effects.';
+const DEFAULT_OFF_COUNTDOWN = 5; // per-message countdown once a mode is turned OFF
+
+let DEFAULT_MODES_RAW = [];
+let DEFAULT_MODES = [];
 
 let modTogToolsMenu;
 let lastClickPosition = { x: 0, y: 0 };
-
-// ===== NEW: Track which modes have been toggled =====
-let toggledModes = new Set(); // Track modes that have been explicitly toggled
-
-// ===== NEW: Countdown system for OFF modes =====
-const DEFAULT_OFF_COUNTDOWN = 5; // Number of messages to send OFF state before removing
-
-// ===== NEW: Persistence System =====
-const EXTENSION_NAME = 'st-mode-toggles';
-
-// ===== NEW: Extension enabled state =====
 let extensionEnabled = true;
+let accordionOpenState = {};
+
+let modTogToolsMenuContent;
+let modTogSearchInput;
+let currentSearchQuery = '';
+
+let modTogResizeObserver;
+
+
+
+async function loadDefaultModesFromAssets() {
+  const all = [];
+
+  // Fetch files sequentially until the first failure (404 or network error)
+  let failures = 0;
+  for (let n = 1; ; n++) {
+    const url = `/scripts/extensions/third-party/st-mode-toggles/modes/modes_${n}.txt`;
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) {
+        if (n === 1) {
+          console.info(`No core modes found at ${url} (status ${res.status}). Proceeding with no defaults.`);
+        } else {
+          console.info(`Stopped loading core modes at ${url} (status ${res.status}).`);
+        }
+        break;
+      }
+
+      const text = await res.text();
+
+
+      if(text == 'Not Found'){
+        break;
+      }
+
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+      // Parse lines the same way as showImportDialog
+      for (const line of lines) {
+        const parts = line.split(' - ');
+        const name = parts[0]?.trim();
+
+        let group, description;
+        if (parts.length >= 3) {
+          group = (parts[1] || '').trim() || 'Unsorted';
+          description = parts.slice(2).join(' - ').trim();
+        } else if (parts.length === 2) {
+          group = 'Unsorted';
+          description = (parts[1] || '').trim();
+        } else {
+          console.warn(`Skipping malformed mode line in ${url}: "${line}"`);
+          continue;
+        }
+
+        if (!name || !description) {
+          console.warn(`Skipping mode with missing name/description in ${url}: "${line}"`);
+          continue;
+        }
+
+        all.push({ name, group, description });
+      }
+    } catch (err) {
+      if (n === 1) {
+        console.warn(`Failed to fetch ${url}:`, err);
+      }
+      if(failures > 5){
+        console.warn(`Stopping core mode loading due to fetch error at ${url}:`, err);
+        break;
+      }
+      failures++;
+    }
+  }
+
+  // Store temporary RAW, then deepFreeze the final DEFAULT_MODES
+  DEFAULT_MODES_RAW = all;
+  DEFAULT_MODES = deepFreeze(DEFAULT_MODES_RAW.map(x => ({ ...x })));
+
+  console.log(`Loaded ${DEFAULT_MODES.length} core mode(s) from assets.`);
+}
+
+
+
+function ensureExtSettings() {
+  if (!extension_settings[EXTENSION_NAME]) extension_settings[EXTENSION_NAME] = {};
+  return extension_settings[EXTENSION_NAME];
+}
+
+function getModeOverrides() {
+  const ext = ensureExtSettings();
+  if (!ext.modeOverrides) ext.modeOverrides = {}; // { [name]: { description } }
+  return ext.modeOverrides;
+}
+
+function getChatStatesAll() {
+  const ext = ensureExtSettings();
+  if (!ext.chatStates) ext.chatStates = {}; // { [chatId]: { [modeName]: { status, countdown? } } }
+  return ext.chatStates;
+}
+
+function getChatState(chatId = getCurrentChatId()) {
+  const all = getChatStatesAll();
+  if (!all[chatId]) all[chatId] = {};
+  return all[chatId];
+}
+
+function getCountdown() {
+  return ensureExtSettings().countdown ?? DEFAULT_OFF_COUNTDOWN;
+}
 
 function getCurrentChatId() {
   try {
     const context = SillyTavern.getContext();
-    // Create a unique identifier for this chat/character combination
     const chatId = context.chatId || 'default';
     const characterId = context.characterId || 'none';
     return `${characterId}_${chatId}`;
@@ -98,71 +149,93 @@ function getCurrentChatId() {
   }
 }
 
-// ===== NEW: Extension Enable/Disable Functions =====
+function getEffectiveModes() {
+  const settings = extension_settings[EXTENSION_NAME] || {};
+  const baseMap = new Map();
+
+  if (settings.loadCoreModes ?? true) {
+    for (const m of DEFAULT_MODES) {
+      baseMap.set(m.name, { name: m.name, description: m.description, group: m.group || 'Unsorted' });
+    }
+  }
+
+  // Apply overrides and custom additions (include group if provided)
+  const overrides = getModeOverrides();
+  for (const [name, ov] of Object.entries(overrides)) {
+    baseMap.set(name, { name, description: ov.description, group: ov.group || 'Unsorted' });
+  }
+  return Array.from(baseMap.values());
+}
+
+
+function getEffectiveModesMap() {
+  const map = new Map();
+  for (const m of getEffectiveModes()) map.set(m.name, m);
+  return map;
+}
+
+// Merge effective modes with per-chat status/countdown to build view used by UI and prompt
+function getModesView(chatId = getCurrentChatId()) {
+  const effective = getEffectiveModes();
+  const state = getChatState(chatId);
+  return effective.map(m => {
+    const s = state[m.name];
+    return {
+      name: m.name,
+      description: m.description,
+      group: m.group || 'Unsorted',
+      status: s?.status ?? 'OFF',
+      countdown: (s && s.countdown !== undefined) ? s.countdown : undefined,
+    };
+  });
+}
+
+// ===== Extension Enable/Disable =====
 function enableExtension() {
   extensionEnabled = true;
-  
-  // Show UI elements
+
   const menuButton = document.getElementById('modtog_menu_button');
-  if (menuButton) {
-    menuButton.style.display = 'block';
-  }
-  
-  // Show extension menu item
+  if (menuButton) menuButton.style.display = 'block';
+
   const extensionMenuItem = document.querySelector('[data-extension="mode-toggles"]');
-  if (extensionMenuItem) {
-    extensionMenuItem.style.display = 'flex';
-  }
-  
-  // Save enabled state
+  if (extensionMenuItem) extensionMenuItem.style.display = 'flex';
+
   saveExtensionSettings();
-  
+
   console.log("Mode toggles extension enabled");
-  
-  if (window.toastr) {
-    toastr.success('Mode Toggles enabled', 'Mode Toggle');
-  }
+  if (window.toastr) toastr.success('Mode Toggles enabled', 'Mode Toggle');
 }
 
 function disableExtension() {
   extensionEnabled = false;
-  
-  // Hide UI elements
+
   const menuButton = document.getElementById('modtog_menu_button');
-  if (menuButton) {
-    menuButton.style.display = 'none';
-  }
-  
-  // Hide menu if open
-  if (modTogToolsMenu) {
-    modTogToolsMenu.style.display = 'none';
-  }
-  
-  // Hide extension menu item
+  if (menuButton) menuButton.style.display = 'none';
+
+  if (modTogToolsMenu) modTogToolsMenu.style.display = 'none';
+
   const extensionMenuItem = document.querySelector('[data-extension="mode-toggles"]');
-  if (extensionMenuItem) {
-    extensionMenuItem.style.display = 'none';
-  }
-  
-  // Save enabled state
+  if (extensionMenuItem) extensionMenuItem.style.display = 'none';
+
   saveExtensionSettings();
-  
+
   console.log("Mode toggles extension disabled");
-  
-  if (window.toastr) {
-    toastr.info('Mode Toggles disabled', 'Mode Toggle');
-  }
+  if (window.toastr) toastr.info('Mode Toggles disabled', 'Mode Toggle');
 }
 
+// ===== Persist Extension UI Settings =====
 function saveExtensionSettings() {
   try {
-    if (!extension_settings[EXTENSION_NAME]) {
-      extension_settings[EXTENSION_NAME] = {};
-    }
-    
-    extension_settings[EXTENSION_NAME].enabled = extensionEnabled;
+    const ext = ensureExtSettings();
+    ext.enabled = extensionEnabled;
+    ext.guidedGenerations = document.getElementById('mode_toggles_guided_generations')?.checked || false;
+    ext.preFraming = document.getElementById('mode_toggles_framing')?.value || DEFAULT_PRE_FRAMING;
+    ext.mergeFormat = document.getElementById('mode_toggles_merge')?.value || DEFAULT_MERGE_FORMAT;
+    ext.postFraming = document.getElementById('mode_toggles_framing_post')?.value || DEFAULT_POST_FRAMING;
+    ext.countdown = parseInt(document.getElementById('mode_toggles_countdown')?.value) || DEFAULT_OFF_COUNTDOWN;
+    ext.loadCoreModes = document.getElementById('mode_toggles_load_core')?.checked ?? true;
+
     saveSettingsDebounced();
-    
     console.log('Extension settings saved:', { enabled: extensionEnabled });
   } catch (error) {
     console.error("Error saving extension settings:", error);
@@ -171,27 +244,34 @@ function saveExtensionSettings() {
 
 function loadExtensionSettings() {
   try {
-    const settings = extension_settings[EXTENSION_NAME];
-    if (settings && settings.hasOwnProperty('enabled')) {
-      extensionEnabled = settings.enabled;
-    } else {
-      extensionEnabled = true; // Default to enabled
-    }
-    
-    console.log('Extension settings loaded:', { enabled: extensionEnabled });
-    
-    // Update checkbox state
+    const settings = extension_settings[EXTENSION_NAME] || {};
+    extensionEnabled = settings.hasOwnProperty('enabled') ? settings.enabled : true;
+
+    const guidedGenerationsCheckbox = document.getElementById('mode_toggles_guided_generations');
+    if (guidedGenerationsCheckbox) guidedGenerationsCheckbox.checked = settings.guidedGenerations || false;
+
+    const preFramingTextarea = document.getElementById('mode_toggles_framing');
+    if (preFramingTextarea) preFramingTextarea.value = settings.preFraming ?? DEFAULT_PRE_FRAMING;
+
+    const mergeFormatTextarea = document.getElementById('mode_toggles_merge');
+    if (mergeFormatTextarea) mergeFormatTextarea.value = settings.mergeFormat ?? DEFAULT_MERGE_FORMAT;
+
+    const postFramingTextarea = document.getElementById('mode_toggles_framing_post');
+    if (postFramingTextarea) postFramingTextarea.value = settings.postFraming ?? DEFAULT_POST_FRAMING;
+
+    const countdownInput = document.getElementById('mode_toggles_countdown');
+    if (countdownInput) countdownInput.value = settings.countdown || DEFAULT_OFF_COUNTDOWN;
+
     const checkbox = document.getElementById('mode_toggles_enabled');
-    if (checkbox) {
-      checkbox.checked = extensionEnabled;
-    }
-    
-    // Apply enabled state
-    if (extensionEnabled) {
-      enableExtension();
-    } else {
-      disableExtension();
-    }
+    if (checkbox) checkbox.checked = extensionEnabled;
+
+    const loadCoreCheckbox = document.getElementById('mode_toggles_load_core');
+    if (loadCoreCheckbox) loadCoreCheckbox.checked = settings.hasOwnProperty('loadCoreModes') ? settings.loadCoreModes : true;
+
+    if (extensionEnabled) enableExtension();
+    else disableExtension();
+
+    console.log('Extension settings loaded:', settings);
   } catch (error) {
     console.error("Error loading extension settings:", error);
   }
@@ -200,79 +280,41 @@ function loadExtensionSettings() {
 function setupSettingsListeners() {
   const checkbox = document.getElementById('mode_toggles_enabled');
   if (checkbox) {
-    checkbox.addEventListener('change', (e) => {
-      if (e.target.checked) {
-        enableExtension();
-      } else {
-        disableExtension();
-      }
-    });
-    
-    // Set initial state
+    checkbox.addEventListener('change', (e) => e.target.checked ? enableExtension() : disableExtension());
     checkbox.checked = extensionEnabled;
   }
+
+  const guidedGenerationsCheckbox = document.getElementById('mode_toggles_guided_generations');
+  if (guidedGenerationsCheckbox) guidedGenerationsCheckbox.addEventListener('change', saveExtensionSettings);
+
+  const preFramingTextarea = document.getElementById('mode_toggles_framing');
+  if (preFramingTextarea) preFramingTextarea.addEventListener('input', saveExtensionSettings);
+
+  const mergeFormatTextarea = document.getElementById('mode_toggles_merge');
+  if (mergeFormatTextarea) mergeFormatTextarea.addEventListener('input', saveExtensionSettings);
+
+  const postFramingTextarea = document.getElementById('mode_toggles_framing_post');
+  if (postFramingTextarea) postFramingTextarea.addEventListener('input', saveExtensionSettings);
+
+  const countdownInput = document.getElementById('mode_toggles_countdown');
+  if (countdownInput) countdownInput.addEventListener('input', saveExtensionSettings);
+
+  const removeAllButton = document.getElementById('mode_toggles_remove_all');
+  if (removeAllButton) removeAllButton.addEventListener('click', removeAllCustomModes);
+
+  const resetDefaultsButton = document.getElementById('mode_toggles_reset_defaults');
+  if (resetDefaultsButton) resetDefaultsButton.addEventListener('click', resetToDefaults);
+
+  const loadCoreCheckbox = document.getElementById('mode_toggles_load_core');
+  if (loadCoreCheckbox) loadCoreCheckbox.addEventListener('change', saveExtensionSettings);
+
 }
 
-// ===== NEW: Mode Override System =====
-function saveModeOverrides() {
+function addModeOverride(name, description, group = 'Unsorted') {
   try {
-    // Initialize extension settings if needed
-    if (!extension_settings[EXTENSION_NAME]) {
-      extension_settings[EXTENSION_NAME] = {};
-    }
-    if (!extension_settings[EXTENSION_NAME].modeOverrides) {
-      extension_settings[EXTENSION_NAME].modeOverrides = {};
-    }
-    
+    const overrides = getModeOverrides();
+    overrides[name] = { description, group: group || 'Unsorted' };
     saveSettingsDebounced();
-    console.log('Mode overrides saved:', extension_settings[EXTENSION_NAME].modeOverrides);
-  } catch (error) {
-    console.error("Error saving mode overrides:", error);
-  }
-}
-
-function loadModeOverrides() {
-  try {
-    const overrides = extension_settings[EXTENSION_NAME]?.modeOverrides || {};
-    
-    // Apply overrides to existing modes and add new custom modes
-    Object.keys(overrides).forEach(modeName => {
-      const override = overrides[modeName];
-      const existingMode = modes.find(m => m.name === modeName);
-      
-      if (existingMode) {
-        // Update existing mode
-        existingMode.description = override.description;
-      } else {
-        // Add new custom mode
-        modes.push({
-          name: modeName,
-          description: override.description,
-          status: 'OFF'
-        });
-      }
-    });
-    
-    console.log('Mode overrides loaded:', overrides);
-  } catch (error) {
-    console.error("Error loading mode overrides:", error);
-  }
-}
-
-function addModeOverride(name, description) {
-  try {
-    if (!extension_settings[EXTENSION_NAME]) {
-      extension_settings[EXTENSION_NAME] = {};
-    }
-    if (!extension_settings[EXTENSION_NAME].modeOverrides) {
-      extension_settings[EXTENSION_NAME].modeOverrides = {};
-    }
-    
-    extension_settings[EXTENSION_NAME].modeOverrides[name] = {
-      description: description
-    };
-    
-    saveModeOverrides();
   } catch (error) {
     console.error("Error adding mode override:", error);
   }
@@ -280,129 +322,175 @@ function addModeOverride(name, description) {
 
 function removeModeOverride(name) {
   try {
-    if (extension_settings[EXTENSION_NAME]?.modeOverrides?.[name]) {
-      delete extension_settings[EXTENSION_NAME].modeOverrides[name];
-      saveModeOverrides();
-      
-      // Remove custom mode from modes array if it was a custom addition
-      const defaultModeNames = ['Noir Echo', 'Silent Scream']; // Default mode names
-      if (!defaultModeNames.includes(name)) {
-        const modeIndex = modes.findIndex(m => m.name === name);
-        if (modeIndex !== -1) {
-          modes.splice(modeIndex, 1);
-        }
+    const overrides = getModeOverrides();
+    if (overrides[name]) {
+      delete overrides[name];
+      // If this mode does not exist in defaults, also clear any chat state entries
+      const isDefault = DEFAULT_MODES.some(m => m.name === name);
+      if (!isDefault) {
+        const all = getChatStatesAll();
+        Object.keys(all).forEach(chatId => {
+          if (all[chatId][name]) delete all[chatId][name];
+        });
       }
+      saveSettingsDebounced();
     }
   } catch (error) {
     console.error("Error removing mode override:", error);
   }
 }
 
-// ===== NEW: Add/Edit Mode Functionality =====
-async function showAddEditModeDialog() {
-  if (!extensionEnabled) return;
-  
+// This exists for parity with older code paths; now it just ensures overrides object exists.
+function loadModeOverrides() {
   try {
-    const result = await Popup.show.input(
-      'Add/Edit Mode',
-      'Enter mode in format: "Name - description"<br>Leave description blank to remove custom modes.',
-      '',
-      {
-        rows: 2,
-        okButton: 'Save',
-        cancelButton: 'Cancel'
-      }
-    );
-    
-    if (result !== null && result !== '') {
-      const parts = result.split(' - ');
-      const name = parts[0]?.trim();
-      const description = parts.slice(1).join(' - ').trim();
-      
-      if (!name) {
-        if (window.toastr) {
-          toastr.error('Mode name cannot be empty', 'Mode Toggle');
-        }
-        return;
-      }
-      
-      if (description === '') {
-        // Remove override if description is blank
-        removeModeOverride(name);
-        
-        // Reset mode to default if it exists in default modes
-        const existingMode = modes.find(m => m.name === name);
-        if (existingMode) {
-          // You would need to restore the original description here
-          // For now, we'll just remove it if it was a custom mode
-          const modeIndex = modes.findIndex(m => m.name === name);
-          if (modeIndex !== -1) {
-            modes.splice(modeIndex, 1);
-          }
-        }
-        
-        if (window.toastr) {
-          toastr.success(`Mode "${name}" removed`, 'Mode Toggle');
-        }
-      } else {
-        // Add or update mode
-        const existingMode = modes.find(m => m.name === name);
-        
-        if (existingMode) {
-          // Update existing mode
-          existingMode.description = description;
-        } else {
-          // Add new mode
-          modes.push({
-            name: name,
-            description: description,
-            status: 'OFF'
-          });
-        }
-        
-        // Save override
-        addModeOverride(name, description);
-        
-        if (window.toastr) {
-          toastr.success(`Mode "${name}" ${existingMode ? 'updated' : 'added'}`, 'Mode Toggle');
-        }
-      }
-      
-      // Update UI
-      updateMenuTitle();
-      updateModTogToolsMenu();
-      saveModeStates(); // Save current states including any new modes
-    }
+    getModeOverrides();
+    console.log('Mode overrides ready:', extension_settings[EXTENSION_NAME]?.modeOverrides || {});
   } catch (error) {
-    console.error("Error in add/edit mode dialog:", error);
-    if (window.toastr) {
-      toastr.error('Error processing mode changes', 'Mode Toggle');
-    }
+    console.error("Error loading mode overrides:", error);
   }
 }
 
-// ===== NEW: Import/Export Functionality =====
+// Remove all custom modes (overrides only), keep defaults
+async function removeAllCustomModes() {
+  if (!extensionEnabled) return;
+  try {
+    const result = await Popup.show.confirm(
+      'Remove All Custom Modes',
+      'This will remove all custom modes you have added. Default modes will remain unchanged. This action cannot be undone.',
+      { okButton: 'Remove All', cancelButton: 'Cancel' }
+    );
+    if (result === POPUP_RESULT.AFFIRMATIVE) {
+      const overrides = getModeOverrides();
+      const defaultNames = new Set(DEFAULT_MODES.map(m => m.name));
+      const toRemoveFromStates = new Set();
+
+      for (const name of Object.keys(overrides)) {
+        if (!defaultNames.has(name)) toRemoveFromStates.add(name);
+        delete overrides[name];
+      }
+
+      // Clean chat states of custom-only modes
+      const all = getChatStatesAll();
+      for (const chatId of Object.keys(all)) {
+        for (const name of toRemoveFromStates) {
+          if (all[chatId][name]) delete all[chatId][name];
+        }
+      }
+
+      saveSettingsDebounced();
+      updateMenuTitle();
+      updateModTogToolsMenu();
+
+      if (window.toastr) toastr.success('All custom modes removed', 'Mode Toggle');
+    }
+  } catch (error) {
+    console.error("Error removing custom modes:", error);
+  }
+}
+
+// Reset entire extension to defaults (no reload)
+async function resetToDefaults() {
+  if (!extensionEnabled) return;
+  try {
+    const result = await Popup.show.confirm(
+      'Reset to Defaults',
+      'This will reset all extension settings to their default values and remove all custom modes and per-chat states. This action cannot be undone.',
+      { okButton: 'Reset All', cancelButton: 'Cancel' }
+    );
+    if (result === POPUP_RESULT.AFFIRMATIVE) {
+      delete extension_settings[EXTENSION_NAME];
+      saveSettingsDebounced();
+
+      // Re-init with defaults in-memory
+      extensionEnabled = true;
+      loadExtensionSettings(); // reload UI fields into defaults
+      updateMenuTitle();
+      updateModTogToolsMenu();
+
+      if (window.toastr) toastr.success('Extension reset to defaults', 'Mode Toggle');
+    }
+  } catch (error) {
+    console.error("Error resetting to defaults:", error);
+  }
+}
+
+async function showAddEditModeDialog(initialName = '', initialGroup = '', initialDescription = '') {
+  if (!extensionEnabled) return;
+  try {
+    const defaultValue = initialName
+      ? `${initialName} - ${initialGroup || 'Unsorted'} - ${initialDescription || ''}`.replace(/\s+-\s+$/, '')
+      : '';
+
+    const result = await Popup.show.input(
+      'Add/Edit Mode',
+      'Enter: "Name - Group - Description"<br>Also accepts "Name - Description" (uses group "Unsorted").<br>Leave description blank to remove custom mode.',
+      defaultValue,
+      { rows: 6, okButton: 'Save', cancelButton: 'Cancel' }
+    );
+
+    if (result !== null && result !== '') {
+      const parts = result.split(' - ');
+      const name = (parts[0] || '').trim();
+
+      let group, description;
+      if (parts.length >= 3) {
+        group = (parts[1] || '').trim() || 'Unsorted';
+        description = parts.slice(2).join(' - ').trim();
+      } else if (parts.length === 2) {
+        group = 'Unsorted';
+        description = (parts[1] || '').trim();
+      } else {
+        group = 'Unsorted';
+        description = '';
+      }
+
+      if (!name) {
+        if (window.toastr) toastr.error('Mode name cannot be empty', 'Mode Toggle');
+        return;
+      }
+
+      if (description === '') {
+        // Remove override if description is blank
+        const wasOverridden = !!getModeOverrides()[name];
+        removeModeOverride(name);
+
+        if (window.toastr) {
+          if (wasOverridden) toastr.success(`Mode "${name}" override removed`, 'Mode Toggle');
+          else toastr.info(`No custom override for "${name}" to remove`, 'Mode Toggle');
+        }
+      } else {
+        addModeOverride(name, description, group);
+        if (window.toastr) toastr.success(`Mode "${name}" saved`, 'Mode Toggle');
+      }
+
+      updateMenuTitle();
+      updateModTogToolsMenu();
+      saveSettingsDebounced();
+    }
+  } catch (error) {
+    console.error("Error in add/edit mode dialog:", error);
+    if (window.toastr) toastr.error('Error processing mode changes', 'Mode Toggle');
+  }
+}
+
+
+
 function exportModes() {
   if (!extensionEnabled) return;
-  
   try {
-    const overrides = extension_settings[EXTENSION_NAME]?.modeOverrides || {};
-    
+    const overrides = getModeOverrides();
     if (Object.keys(overrides).length === 0) {
-      if (window.toastr) {
-        toastr.info('No custom modes to export', 'Mode Toggle');
-      }
+      if (window.toastr) toastr.info('No custom modes to export', 'Mode Toggle');
       return;
     }
-    
-    // Format modes as "Name - Description"
     const exportLines = Object.keys(overrides).map(name => {
-      return `${name} - ${overrides[name].description}`;
+      const ov = overrides[name] || {};
+      const group = ov.group || 'Unsorted';
+      const description = ov.description || '';
+      return `${name} - ${group} - ${description}`;
     });
-    
     const exportText = exportLines.join('\n');
-    
-    // Create and download file
+
     const blob = new Blob([exportText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -412,178 +500,133 @@ function exportModes() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    if (window.toastr) {
-      toastr.success(`Exported ${Object.keys(overrides).length} custom mode(s)`, 'Mode Toggle');
-    }
+
+    if (window.toastr) toastr.success(`Exported ${Object.keys(overrides).length} custom mode(s)`, 'Mode Toggle');
   } catch (error) {
     console.error("Error exporting modes:", error);
-    if (window.toastr) {
-      toastr.error('Error exporting modes', 'Mode Toggle');
-    }
+    if (window.toastr) toastr.error('Error exporting modes', 'Mode Toggle');
   }
 }
 
+
 async function showImportDialog() {
   if (!extensionEnabled) return;
-  
   try {
-    // Create a hidden file input
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.txt,.text,text/plain';
     fileInput.style.display = 'none';
-    
-    // Add to document temporarily
     document.body.appendChild(fileInput);
-    
-    // Create a promise to handle file selection
+
     const filePromise = new Promise((resolve, reject) => {
       fileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = (e) => {
-            resolve(e.target.result);
-          };
-          reader.onerror = (e) => {
-            reject(new Error('Failed to read file'));
-          };
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = () => reject(new Error('Failed to read file'));
           reader.readAsText(file);
         } else {
-          resolve(null); // User cancelled
+          resolve(null);
         }
       });
-      
-      // Timeout after 30 seconds to prevent hanging
-      setTimeout(() => {
-        resolve(null);
-      }, 30000);
+      setTimeout(() => resolve(null), 30000);
     });
-    
-    // Trigger the file dialog
+
     fileInput.click();
-    
-    // Wait for file selection and reading
     const result = await filePromise;
-    
-    // Clean up
     document.body.removeChild(fileInput);
-    
+
     if (result !== null && result.trim() !== '') {
-      const lines = result.split('\n').map(line => line.trim()).filter(line => line);
+      const lines = result.split('\n').map(line => line.trim()).filter(Boolean);
       let importedCount = 0;
       let errorCount = 0;
-      
+
       lines.forEach(line => {
         const parts = line.split(' - ');
         const name = parts[0]?.trim();
-        const description = parts.slice(1).join(' - ').trim();
-        
+
+        let group, description;
+        if (parts.length >= 3) {
+          group = (parts[1] || '').trim() || 'Unsorted';
+          description = parts.slice(2).join(' - ').trim();
+        } else if (parts.length === 2) {
+          group = 'Unsorted';
+          description = (parts[1] || '').trim();
+        } else {
+          // not enough parts to create or remove meaningfully
+          errorCount++;
+          return;
+        }
+
         if (!name || !description) {
           errorCount++;
           return;
         }
-        
-        // Add or update mode
-        const existingMode = modes.find(m => m.name === name);
-        
-        if (existingMode) {
-          // Update existing mode
-          existingMode.description = description;
-        } else {
-          // Add new mode
-          modes.push({
-            name: name,
-            description: description,
-            status: 'OFF'
-          });
-        }
-        
-        // Save override
-        addModeOverride(name, description);
+
+        addModeOverride(name, description, group);
         importedCount++;
       });
-      
-      // Update UI
+
       updateMenuTitle();
       updateModTogToolsMenu();
-      saveModeStates();
-      
+      saveSettingsDebounced();
+
       if (window.toastr) {
-        if (importedCount > 0) {
-          toastr.success(`Imported ${importedCount} mode(s) from file`, 'Mode Toggle');
-        }
-        if (errorCount > 0) {
-          toastr.warning(`${errorCount} line(s) skipped due to format errors`, 'Mode Toggle');
-        }
+        if (importedCount > 0) toastr.success(`Imported ${importedCount} mode(s) from file`, 'Mode Toggle');
+        if (errorCount > 0) toastr.warning(`${errorCount} line(s) skipped due to format errors`, 'Mode Toggle');
       }
     } else if (result === null) {
-      // User cancelled or no file selected
-      if (window.toastr) {
-        toastr.info('Import cancelled', 'Mode Toggle');
-      }
+      if (window.toastr) toastr.info('Import cancelled', 'Mode Toggle');
     }
   } catch (error) {
     console.error("Error importing modes:", error);
-    if (window.toastr) {
-      toastr.error('Error importing modes from file', 'Mode Toggle');
-    }
+    if (window.toastr) toastr.error('Error importing modes from file', 'Mode Toggle');
   }
 }
 
+
+
+
+
+// ===== Per-Chat State: Toggle / Load / Save =====
+function toggleModeStatus(modeName) {
+  if (!extensionEnabled) return;
+
+  const effectiveMap = getEffectiveModesMap();
+  if (!effectiveMap.has(modeName)) return; // ignore non-existent mode
+
+  const chatId = getCurrentChatId();
+  const state = getChatState(chatId);
+  const curr = state[modeName]?.status ?? 'OFF';
+
+  let next, nextCountdown;
+  switch (curr) {
+    case 'OFF':
+      next = 'Activating'; nextCountdown = undefined; break;
+    case 'ON':
+      next = 'Deactivating'; nextCountdown = undefined; break;
+    case 'Activating':
+      next = 'OFF'; nextCountdown = undefined; break;
+    case 'Deactivating':
+      next = 'ON'; nextCountdown = undefined; break;
+    default:
+      next = 'OFF'; nextCountdown = getCountdown();
+  }
+
+  state[modeName] = { status: next };
+  if (nextCountdown !== undefined) state[modeName].countdown = nextCountdown;
+
+  saveSettingsDebounced();
+  updateMenuTitle();
+  updateModTogToolsMenu();
+}
+
+// For compatibility with older calls; saving is immediate on change now.
 function saveModeStates() {
   if (!extensionEnabled) return;
-  
   try {
-    const chatId = getCurrentChatId();
-    
-    // Initialize extension settings if needed
-    if (!extension_settings[EXTENSION_NAME]) {
-      extension_settings[EXTENSION_NAME] = {};
-    }
-    if (!extension_settings[EXTENSION_NAME].chatStates) {
-      extension_settings[EXTENSION_NAME].chatStates = {};
-    }
-    
-    // Get existing saved states to preserve countdown values
-    const existingSavedStates = extension_settings[EXTENSION_NAME].chatStates[chatId] || {};
-    
-    // CHANGE 1: Only save modes that have been toggled
-    const modeStates = {};
-    modes.forEach(mode => {
-      if (toggledModes.has(mode.name)) {
-        if (mode.status === 'OFF') {
-          // For OFF modes, use existing countdown or start new countdown
-          const existingState = existingSavedStates[mode.name];
-          const countdown = (existingState && typeof existingState === 'object' && existingState.countdown !== undefined) 
-            ? existingState.countdown 
-            : DEFAULT_OFF_COUNTDOWN;
-          
-          modeStates[mode.name] = {
-            status: mode.status,
-            countdown: countdown
-          };
-        } else {
-          // For non-OFF modes, just save the status
-          modeStates[mode.name] = {
-            status: mode.status,
-            countdown: null
-          };
-        }
-      }
-    });
-    
-    // Only save if there are toggled modes, otherwise delete the chat state
-    if (Object.keys(modeStates).length > 0) {
-      extension_settings[EXTENSION_NAME].chatStates[chatId] = modeStates;
-    } else {
-      delete extension_settings[EXTENSION_NAME].chatStates[chatId];
-    }
-    
     saveSettingsDebounced();
-    
-    console.log(`Saved mode states for chat ${chatId}:`, modeStates);
   } catch (error) {
     console.error("Error saving mode states:", error);
   }
@@ -591,61 +634,17 @@ function saveModeStates() {
 
 function loadModeStates() {
   if (!extensionEnabled) return;
-  
   try {
     const chatId = getCurrentChatId();
-    
-    // Check if we have saved states for this chat
-    const savedStates = extension_settings[EXTENSION_NAME]?.chatStates?.[chatId];
-    
-    if (savedStates) {
-      console.log(`Loading mode states for chat ${chatId}:`, savedStates);
-      
-      // Reset all modes to OFF first
-      modes.forEach(mode => {
-        mode.status = 'OFF';
-      });
-      
-      // Apply saved states and mark as toggled
-      toggledModes.clear();
-      Object.keys(savedStates).forEach(modeName => {
-        const mode = modes.find(m => m.name === modeName);
-        if (mode) {
-          const savedState = savedStates[modeName];
-          
-          // Handle both old format (string) and new format (object)
-          if (typeof savedState === 'string') {
-            mode.status = savedState;
-          } else if (typeof savedState === 'object') {
-            mode.status = savedState.status;
-            // Store countdown info in a separate tracking object if needed
-            if (savedState.countdown !== null && savedState.countdown !== undefined) {
-              mode._countdown = savedState.countdown;
-            }
-          }
-          
-          toggledModes.add(modeName);
-        }
-      });
-      
-      updateMenuTitle();
-      updateModTogToolsMenu();
-      
-      // Show notification for active modes
-      const activeModes = modes.filter(mode => mode.status === 'ON');
-      if (activeModes.length > 0 && window.toastr) {
-        toastr.info(`Restored ${activeModes.length} active mode(s)`, 'Mode Toggle');
-      }
-    } else {
-      console.log(`No saved mode states found for chat ${chatId}, resetting to defaults`);
-      // Reset all modes to OFF for new chats
-      modes.forEach(mode => {
-        mode.status = 'OFF';
-        delete mode._countdown;
-      });
-      toggledModes.clear();
-      updateMenuTitle();
-      updateModTogToolsMenu();
+    const state = getChatState(chatId);
+    console.log(`Loaded mode states for chat ${chatId}:`, state);
+
+    updateMenuTitle();
+    updateModTogToolsMenu();
+
+    const activeCount = Object.values(state).filter(s => s.status === 'ON').length;
+    if (activeCount > 0 && window.toastr) {
+      toastr.info(`Restored ${activeCount} active mode(s)`, 'Mode Toggle');
     }
   } catch (error) {
     console.error("Error loading mode states:", error);
@@ -654,153 +653,311 @@ function loadModeStates() {
 
 function repositionMenu() {
   if (!modTogToolsMenu || modTogToolsMenu.style.display !== 'block') return;
-  
+
+  const padding = 8;
+
+  // Keep max-height within viewport
+  const maxH = Math.min(500, window.innerHeight - padding * 2);
+  modTogToolsMenu.style.maxHeight = `${maxH}px`;
+
+  // Measure after maxHeight applied
   const menuRect = modTogToolsMenu.getBoundingClientRect();
-  modTogToolsMenu.style.left = `${lastClickPosition.x}px`;
-  modTogToolsMenu.style.top = `${lastClickPosition.y - menuRect.height}px`;
+
+  let left = lastClickPosition.x;
+  let top;
+
+  const spaceAbove = lastClickPosition.y - padding;
+  const spaceBelow = window.innerHeight - lastClickPosition.y - padding;
+
+  // Prefer placing fully above; else fully below; else clamp the best we can
+  if (menuRect.height <= spaceAbove) {
+    top = lastClickPosition.y - menuRect.height - padding;
+  } else if (menuRect.height <= spaceBelow) {
+    top = lastClickPosition.y + padding;
+  } else {
+    if (spaceBelow >= spaceAbove) {
+      top = Math.max(padding, Math.min(lastClickPosition.y + padding, window.innerHeight - menuRect.height - padding));
+    } else {
+      top = Math.max(padding, Math.min(lastClickPosition.y - menuRect.height - padding, window.innerHeight - menuRect.height - padding));
+    }
+  }
+
+  // Horizontal clamp
+  if (left + menuRect.width + padding > window.innerWidth) {
+    left = Math.max(padding, window.innerWidth - menuRect.width - padding);
+  } else {
+    left = Math.max(padding, left);
+  }
+
+  modTogToolsMenu.style.left = `${left}px`;
+  modTogToolsMenu.style.top = `${top}px`;
 }
 
 function updateMenuTitle() {
   if (!extensionEnabled) return;
-  
   const menuButton = document.getElementById('modtog_menu_button');
   if (menuButton) {
-    const activeCount = modes.filter(mode => mode.status === 'ON').length;
+    const activeCount = getModesView().filter(m => m.status === 'ON').length;
     menuButton.title = `${activeCount} Mode${activeCount !== 1 ? 's' : ''} active.`;
-  }
-}
+    menuButton.firstChild.innerText=`${activeCount}`
 
-function toggleModeStatus(modeName) {
-  if (!extensionEnabled) return;
-  
-  const mode = modes.find(m => m.name === modeName);
-  if (mode) {
-    // Mark this mode as toggled
-    toggledModes.add(modeName);
-    
-    switch (mode.status) {
-      case 'OFF':
-        mode.status = 'Activating';
-        delete mode._countdown; // Clear any existing countdown
-        break;
-      case 'ON':
-        mode.status = 'Deactivating';
-        break;
-      case 'Activating':
-        mode.status = 'OFF';
-        mode._countdown = DEFAULT_OFF_COUNTDOWN; // Start countdown when turning off
-        break;
-      case 'Deactivating':
-        mode.status = 'ON';
-        delete mode._countdown; // Clear countdown when turning back on
-        break;
-    }
-    updateMenuTitle();
-    updateModTogToolsMenu();
-    
-    // Save state changes immediately
-    saveModeStates();
-  }
-}
-
-// ===== Event Listener Setup =====
-function setupEventListeners() {
-  try {
-    const context = SillyTavern.getContext();
-    const { eventSource, event_types } = context;
-    
-    if (!eventSource || !event_types) {
-      console.error("EventSource or event_types not available");
-      return;
-    }
-    
-    // Listen for chat changes
-    eventSource.on(event_types.CHAT_CHANGED, () => {
-      console.log("Chat changed - loading mode states");
-      setTimeout(loadModeStates, 100);
-    });
-    
-    // Also load on app ready
-    eventSource.on(event_types.APP_READY, () => {
-      console.log("App ready - performing initial mode state load");
-      setTimeout(() => {
-        loadModeOverrides();
-        loadModeStates();
-      }, 500);
-    });
-    
-    console.log("Mode persistence event listeners registered");
-    
-  } catch (error) {
-    console.error("Error setting up event listeners:", error);
   }
 }
 
 function updateModTogToolsMenu() {
   if (!modTogToolsMenu || !extensionEnabled) return;
-  
-  modTogToolsMenu.innerHTML = '';
-  
-  const sortedModes = [...modes].sort((a, b) => {
-    const aActive = a.status === 'ON' || a.status === 'Activating' || a.status === 'Deactivating';
-    const bActive = b.status === 'ON' || b.status === 'Activating' || b.status === 'Deactivating';
-    
-    if (aActive && !bActive) return -1;
-    if (!aActive && bActive) return 1;
-    return 0;
-  });
-  
-  sortedModes.forEach(mode => {
-    const button = document.createElement('div');
-    button.className = 'gg-tools-menu-item interactable';
-    
-    // Show countdown information for OFF modes
-    let statusDisplay = mode.status;
-    if (mode.status === 'OFF' && mode._countdown !== undefined) {
-      statusDisplay = `OFF(${mode._countdown})`;
-    }
-    
-    button.innerHTML = `<strong>[${mode.name} ${statusDisplay}]</strong> - ${mode.description}`;
-    button.style.cursor = 'pointer';
-    button.style.padding = '8px 12px';
-    button.style.borderBottom = '1px solid #333';
-    button.style.fontSize = 'small';
-    
-    button.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleModeStatus(mode.name);
-      setTimeout(repositionMenu, 0);
-    });
-    
-    if (mode.status === 'ON') {
-      button.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
-      button.style.color = '#90EE90';
-    } else if (mode.status === 'OFF') {
-      if (mode._countdown !== undefined) {
-        // Different color for counting down OFF modes
-        button.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
-        button.style.color = '#FFD700';
-      } else {
-        button.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
-        button.style.color = '#FFB6C1';
+
+  const root = modTogToolsMenuContent || modTogToolsMenu;
+  root.innerHTML = '';
+
+  const view = getModesView();
+
+  const q = (currentSearchQuery || '').trim();
+  const filterFn = q
+    ? (m) => {
+        const hay = `${m.name} ${m.group || 'Unsorted'} ${m.description}`.toLowerCase();
+        return hay.includes(q);
       }
-    } else if (mode.status === 'Activating') {
-      button.style.backgroundColor = 'rgba(255, 255, 0, 0.1)';
-      button.style.color = '#FFD700';
-    } else if (mode.status === 'Deactivating') {
-      button.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
-      button.style.color = '#FFA500';
-    }
-    
-    modTogToolsMenu.appendChild(button);
-  });
-  
-  // Add separator and Add/Edit button
+    : () => true;
+
+  const filtered = view.filter(filterFn);
+
+  const isActiveish = (m) => (m.status === 'ON' || m.status === 'Activating' || m.status === 'Deactivating');
+
+  // Enabled section (only if any after filter)
+  const enabled = filtered.filter(isActiveish).sort((a, b) => a.name.localeCompare(b.name));
+  if (enabled.length > 0) {
+    const { section, content } = createAccordionSection('Enabled', enabled);
+    enabled.forEach(mode => content.appendChild(makeModeButton(mode)));
+    root.appendChild(section);
+  }
+
+  // Group sections (apply filter)
+  const groupsMap = new Map();
+  for (const mode of filtered) {
+    const g = mode.group || 'Unsorted';
+    if (!groupsMap.has(g)) groupsMap.set(g, []);
+    groupsMap.get(g).push(mode);
+  }
+
+  const groupNames = Array.from(groupsMap.keys()).sort((a, b) => a.localeCompare(b));
+
+  for (const gName of groupNames) {
+    const items = groupsMap.get(gName).slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (items.length === 0) continue;
+    const { section, content } = createAccordionSection(gName, items);
+    items.forEach(mode => content.appendChild(makeModeButton(mode)));
+    root.appendChild(section);
+  }
+
+  // Separator
   const separator = document.createElement('div');
   separator.style.borderTop = '2px solid #555';
   separator.style.margin = '5px 0';
-  modTogToolsMenu.appendChild(separator);
-  
+  root.appendChild(separator);
+
+  // Add/Edit, Import/Export
+  root.appendChild(makeAddEditButton());
+  root.appendChild(makeImportExportButtons());
+}
+
+
+
+function addMenuButton() {
+  let menupresent = document.getElementById('modtog_menu_button');
+  if (!menupresent) {
+    const container = document.getElementById('gg-menu-buttons-container');
+    if (container) {
+      const menuButton = document.createElement('div');
+      menuButton.id = 'modtog_menu_button';
+      menuButton.className = 'gg-menu-button fa-solid fa-microchip interactable';
+      menuButton.title = '0 Modes active.';
+      menuButton.tabIndex = 0;
+      menuButton.innerHTML='<span id="modtog_counter_span" class="pg-guide-counter">0</span>';
+
+
+      if (!extensionEnabled) menuButton.style.display = 'none';
+
+      menuButton.addEventListener('click', (e) => {
+        if (!extensionEnabled) return;
+        e.stopPropagation();
+
+        lastClickPosition.x = e.clientX;
+        lastClickPosition.y = e.clientY;
+
+        if (!modTogToolsMenu) createModTogToolsMenu();
+
+        if (modTogToolsMenu.style.display === 'block') {
+          modTogToolsMenu.style.display = 'none';
+        } else {
+          document.querySelectorAll('.gg-tools-menu').forEach(menu => {
+            if (menu !== modTogToolsMenu) menu.style.display = 'none';
+          });
+
+          modTogToolsMenu.style.display = 'block';
+          modTogToolsMenu.style.position = 'fixed';
+          modTogToolsMenu.style.zIndex = '99999';
+
+          updateModTogToolsMenu();
+          repositionMenu();
+
+          modTogSearchInput?.focus();
+          modTogSearchInput?.select();
+        }
+      });
+
+      container.appendChild(menuButton);
+      updateMenuTitle();
+      return true;
+    }
+  }
+  return false;
+}
+
+function addExtensionMenuButton() {
+  const $extensions_menu = $('#extensionsMenu');
+  if (!$extensions_menu.length) return;
+
+  if ($extensions_menu.find('[data-extension="mode-toggles"]').length > 0) return;
+
+  let $button = $(`
+    <div class="list-group-item flex-container flexGap5 interactable" 
+         title="Open Mode Toggles Menu" 
+         data-i18n="[title]Open Mode Toggles Menu" 
+         data-extension="mode-toggles"
+         tabindex="0">
+        <i class="fa-solid fa-microchip"></i>
+        <span>Mode Toggles</span>
+    </div>
+  `);
+
+  if (!extensionEnabled) $button.hide();
+  $button.appendTo($extensions_menu);
+
+  $button.click((e) => {
+    if (!extensionEnabled) return;
+    e.stopPropagation();
+
+    const extensionsButton = document.querySelector('#extensionsMenuButton');
+    if (extensionsButton) {
+      const rect = extensionsButton.getBoundingClientRect();
+      lastClickPosition.x = rect.right;
+      lastClickPosition.y = rect.bottom;
+    } else {
+      lastClickPosition.x = window.innerWidth / 2;
+      lastClickPosition.y = window.innerHeight / 2;
+    }
+
+    if (!modTogToolsMenu) createModTogToolsMenu();
+
+    $('#extensionsMenu').removeClass('show');
+
+    document.querySelectorAll('.gg-tools-menu').forEach(menu => {
+      if (menu !== modTogToolsMenu) menu.style.display = 'none';
+    });
+
+    modTogToolsMenu.style.display = 'block';
+    modTogToolsMenu.style.position = 'fixed';
+    modTogToolsMenu.style.zIndex = '99999';
+
+    updateModTogToolsMenu();
+    repositionMenu();
+    modTogSearchInput?.focus();
+    modTogSearchInput?.select();
+
+  });
+}
+
+function createAccordionSection(title, items = []) {
+  const section = document.createElement('div');
+  section.className = 'accordion-section';
+
+  const header = document.createElement('div');
+  header.className = 'accordion-header';
+  header.textContent = `${title} (${items.length})`;
+  header.style.cursor = 'pointer';
+  header.style.padding = '6px 10px';
+  header.style.background = '#222';
+  header.style.color = '#ccc';
+  header.style.fontWeight = 'bold';
+  header.style.userSelect = 'none';
+
+  const content = document.createElement('div');
+  content.className = 'accordion-content';
+
+  // Restore persisted state (default collapsed)
+  const key = String(title);
+  const isOpen = !!accordionOpenState[key];
+  content.style.display = isOpen ? 'block' : 'none';
+  content.style.paddingLeft = '8px';
+
+  header.addEventListener('click', () => {
+    const nowOpen = content.style.display === 'none';
+    content.style.display = nowOpen ? 'block' : 'none';
+    accordionOpenState[key] = nowOpen;
+    repositionMenu();
+  });
+
+  section.appendChild(header);
+  section.appendChild(content);
+  return { section, header, content };
+}
+
+
+
+// NEW: builds a single mode button (moved out of updateModTogToolsMenu)
+function makeModeButton(mode) {
+  const button = document.createElement('div');
+  button.className = 'gg-tools-menu-item interactable';
+
+  let statusDisplay = mode.status;
+  if (mode.status === 'OFF' && mode.countdown !== undefined) {
+    statusDisplay = `OFF(${mode.countdown})`;
+  }
+
+  button.innerHTML = `<strong>${mode.name} ${statusDisplay}</strong><div>${mode.description}</div>`;
+  button.style.cursor = 'pointer';
+  button.style.padding = '8px 12px';
+  button.style.borderBottom = '1px solid #333';
+  button.style.fontSize = 'small';
+
+  button.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (e.ctrlKey) {
+      // Ctrl+Click → open prefilled edit dialog
+      modTogToolsMenu.style.display = 'none';
+      showAddEditModeDialog(mode.name, mode.group, mode.description);
+    } else {
+      // Normal click → toggle status
+      toggleModeStatus(mode.name);
+      setTimeout(repositionMenu, 0);
+    }
+  });
+
+  if (mode.status === 'ON') {
+    button.style.backgroundColor = 'rgba(0, 255, 0, 0.1)';
+    button.style.color = '#90EE90';
+  } else if (mode.status === 'OFF') {
+    if (mode.countdown !== undefined) {
+      button.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
+      button.style.color = '#FFD700';
+    } else {
+      button.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+      button.style.color = '#FFB6C1';
+    }
+  } else if (mode.status === 'Activating') {
+    button.style.backgroundColor = 'rgba(255, 255, 0, 0.1)';
+    button.style.color = '#FFD700';
+  } else if (mode.status === 'Deactivating') {
+    button.style.backgroundColor = 'rgba(255, 165, 0, 0.1)';
+    button.style.color = '#FFA500';
+  }
+
+  return button;
+}
+
+// NEW: builds the "+ Add/Edit Mode" menu button
+function makeAddEditButton() {
   const addEditButton = document.createElement('div');
   addEditButton.className = 'gg-tools-menu-item interactable';
   addEditButton.innerHTML = '<strong>+ Add/Edit Mode</strong>';
@@ -810,19 +967,100 @@ function updateModTogToolsMenu() {
   addEditButton.style.backgroundColor = 'rgba(0, 0, 255, 0.1)';
   addEditButton.style.color = '#87CEEB';
   addEditButton.style.textAlign = 'center';
-  
+
   addEditButton.addEventListener('click', (e) => {
     e.stopPropagation();
-    modTogToolsMenu.style.display = 'none'; // Hide menu first
+    modTogToolsMenu.style.display = 'none';
     showAddEditModeDialog();
   });
+
+  return addEditButton;
+}
+
+function disableAllModes() {
+  if (!extensionEnabled) return;
   
-  modTogToolsMenu.appendChild(addEditButton);
+  const chatId = getCurrentChatId();
+  const state = getChatState(chatId);
+  const view = getModesView(chatId);
   
-  // Add Import/Export buttons
+  // Find all currently active modes (ON, Activating, or Deactivating)
+  const activeModes = view.filter(m => 
+    m.status === 'ON' || m.status === 'Activating' || m.status === 'Deactivating'
+  );
+  
+  if (activeModes.length === 0) {
+    if (window.toastr) toastr.info('No active modes to disable', 'Mode Toggle');
+    return;
+  }
+  
+  // Set all active modes to 'Deactivating' status
+  let disabledCount = 0;
+  for (const mode of activeModes) {
+    if (state[mode.name]) {
+      state[mode.name].status = 'Deactivating';
+      delete state[mode.name].countdown; // Clear any existing countdown
+      disabledCount++;
+    }
+  }
+  
+  // Save and update UI
+  saveSettingsDebounced();
+  updateMenuTitle();
+  updateModTogToolsMenu();
+  
+  if (window.toastr && disabledCount > 0) {
+    toastr.success(`Disabled ${disabledCount} mode${disabledCount !== 1 ? 's' : ''}`, 'Mode Toggle');
+  }
+}
+
+function activateRandomMode() {
+  if (!extensionEnabled) return;
+  
+  const chatId = getCurrentChatId();
+  const state = getChatState(chatId);
+  const view = getModesView(chatId);
+  
+  // Find all currently inactive modes (OFF status only)
+  const inactiveModes = view.filter(m => m.status === 'OFF');
+  
+  if (inactiveModes.length === 0) {
+    if (window.toastr) toastr.info('No inactive modes available to activate', 'Mode Toggle');
+    return;
+  }
+  
+  // Pick a random mode from the inactive ones
+  const randomIndex = Math.floor(Math.random() * inactiveModes.length);
+  const selectedMode = inactiveModes[randomIndex];
+  
+  // Set the selected mode to 'Activating' status
+  if (!state[selectedMode.name]) {
+    state[selectedMode.name] = {};
+  }
+  state[selectedMode.name].status = 'Activating';
+  delete state[selectedMode.name].countdown; // Clear any existing countdown
+  
+  // Save and update UI
+  saveSettingsDebounced();
+  updateMenuTitle();
+  updateModTogToolsMenu();
+  
+  if (window.toastr) {
+    toastr.success(`Randomly activated: ${selectedMode.name}`, 'Mode Toggle');
+  }
+}
+
+
+function makeImportExportButtons() {
   const importExportContainer = document.createElement('div');
   importExportContainer.style.display = 'flex';
+  importExportContainer.style.flexDirection = 'column';
   importExportContainer.style.gap = '2px';
+  
+  // First row: Import/Export buttons
+  const firstRow = document.createElement('div');
+  firstRow.style.display = 'flex';
+  firstRow.style.gap = '2px';
   
   const exportButton = document.createElement('div');
   exportButton.className = 'gg-tools-menu-item interactable';
@@ -834,10 +1072,9 @@ function updateModTogToolsMenu() {
   exportButton.style.color = '#90EE90';
   exportButton.style.textAlign = 'center';
   exportButton.style.flex = '1';
-  
   exportButton.addEventListener('click', (e) => {
     e.stopPropagation();
-    modTogToolsMenu.style.display = 'none'; // Hide menu first
+    modTogToolsMenu.style.display = 'none';
     exportModes();
   });
   
@@ -851,144 +1088,62 @@ function updateModTogToolsMenu() {
   importButton.style.color = '#FFA500';
   importButton.style.textAlign = 'center';
   importButton.style.flex = '1';
-  
   importButton.addEventListener('click', (e) => {
     e.stopPropagation();
-    modTogToolsMenu.style.display = 'none'; // Hide menu first
+    modTogToolsMenu.style.display = 'none';
     showImportDialog();
   });
   
-  importExportContainer.appendChild(exportButton);
-  importExportContainer.appendChild(importButton);
-  modTogToolsMenu.appendChild(importExportContainer);
-}
-
-function addMenuButton() {
-  let menupresent = document.getElementById('modtog_menu_button');
-  if (!menupresent) {
-    const container = document.getElementById('gg-menu-buttons-container');
-    if (container) {
-      const menuButton = document.createElement('div');
-      menuButton.id = 'modtog_menu_button';
-      menuButton.className = 'gg-menu-button fa-solid fa-microchip interactable';
-      menuButton.title = '0 Modes active.';
-      menuButton.tabIndex = 0;
-      
-      // Set initial visibility based on extension state
-      if (!extensionEnabled) {
-        menuButton.style.display = 'none';
-      }
-      
-      menuButton.addEventListener('click', (e) => {
-        if (!extensionEnabled) return;
-        
-        e.stopPropagation();
-        
-        lastClickPosition.x = e.clientX;
-        lastClickPosition.y = e.clientY;
-        
-        if (!modTogToolsMenu) {
-          createModTogToolsMenu();
-        }
-        
-        if (modTogToolsMenu.style.display === 'block') {
-          modTogToolsMenu.style.display = 'none';
-        } else {
-          document.querySelectorAll('.gg-tools-menu').forEach(menu => {
-            if (menu !== modTogToolsMenu) {
-              menu.style.display = 'none';
-            }
-          });
-          
-          modTogToolsMenu.style.display = 'block';
-          modTogToolsMenu.style.position = 'fixed';
-          modTogToolsMenu.style.zIndex = '99999';
-          
-          updateModTogToolsMenu();
-          repositionMenu();
-        }
-      });
-      
-      container.appendChild(menuButton);
-      updateMenuTitle();
-      return true;
-    }
-  }
-  return false;
-}
-
-function addExtensionMenuButton() {
-  // Select the Extensions dropdown menu
-  let $extensions_menu = $('#extensionsMenu');
-  if (!$extensions_menu.length) {
-    return;
-  }
+  firstRow.appendChild(exportButton);
+  firstRow.appendChild(importButton);
   
-  // Check if button already exists
-  if ($extensions_menu.find('[data-extension="mode-toggles"]').length > 0) {
-    return;
-  }
+  // Second row: Disable All/Activate Random buttons
+  const secondRow = document.createElement('div');
+  secondRow.style.display = 'flex';
+  secondRow.style.gap = '2px';
   
-  // Create button element with microchip icon and extension name
-  let $button = $(`
-    <div class="list-group-item flex-container flexGap5 interactable" 
-         title="Open Mode Toggles Menu" 
-         data-i18n="[title]Open Mode Toggles Menu" 
-         data-extension="mode-toggles"
-         tabindex="0">
-        <i class="fa-solid fa-microchip"></i>
-        <span>Mode Toggles</span>
-    </div>
-  `);
-  
-  // Set initial visibility based on extension state
-  if (!extensionEnabled) {
-    $button.hide();
-  }
-  
-  // Append to extensions menu
-  $button.appendTo($extensions_menu);
-  
-  // Set click handler to open the mode toggles menu
-  $button.click((e) => {
-    if (!extensionEnabled) return;
-    
+  const disableAllButton = document.createElement('div');
+  disableAllButton.className = 'gg-tools-menu-item interactable';
+  disableAllButton.innerHTML = '<strong>🚫 Disable All</strong>';
+  disableAllButton.style.cursor = 'pointer';
+  disableAllButton.style.padding = '6px 8px';
+  disableAllButton.style.fontSize = 'small';
+  disableAllButton.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+  disableAllButton.style.color = '#FF6B6B';
+  disableAllButton.style.textAlign = 'center';
+  disableAllButton.style.flex = '1';
+  disableAllButton.addEventListener('click', (e) => {
+    disableAllModes();
     e.stopPropagation();
-    
-    // Position menu near the extensions menu button
-    const extensionsButton = document.querySelector('#extensionsMenuButton');
-    if (extensionsButton) {
-      const rect = extensionsButton.getBoundingClientRect();
-      lastClickPosition.x = rect.right;
-      lastClickPosition.y = rect.bottom;
-    } else {
-      // Fallback positioning
-      lastClickPosition.x = window.innerWidth / 2;
-      lastClickPosition.y = window.innerHeight / 2;
-    }
-    
-    if (!modTogToolsMenu) {
-      createModTogToolsMenu();
-    }
-    
-    // Close extensions menu
-    $('#extensionsMenu').removeClass('show');
-    
-    // Show mode toggles menu
-    document.querySelectorAll('.gg-tools-menu').forEach(menu => {
-      if (menu !== modTogToolsMenu) {
-        menu.style.display = 'none';
-      }
-    });
-    
-    modTogToolsMenu.style.display = 'block';
-    modTogToolsMenu.style.position = 'fixed';
-    modTogToolsMenu.style.zIndex = '99999';
-    
-    updateModTogToolsMenu();
-    repositionMenu();
   });
+  
+  const activateRandomButton = document.createElement('div');
+  activateRandomButton.className = 'gg-tools-menu-item interactable';
+  activateRandomButton.innerHTML = '<strong>🎲 Random</strong>';
+  activateRandomButton.style.cursor = 'pointer';
+  activateRandomButton.style.padding = '6px 8px';
+  activateRandomButton.style.fontSize = 'small';
+  activateRandomButton.style.backgroundColor = 'rgba(128, 0, 128, 0.1)';
+  activateRandomButton.style.color = '#DA70D6';
+  activateRandomButton.style.textAlign = 'center';
+  activateRandomButton.style.flex = '1';
+  activateRandomButton.addEventListener('click', (e) => {
+    activateRandomMode();
+    e.stopPropagation();
+  });
+  
+  secondRow.appendChild(disableAllButton);
+  secondRow.appendChild(activateRandomButton);
+  
+  // Add both rows to the container
+  importExportContainer.appendChild(firstRow);
+  importExportContainer.appendChild(secondRow);
+  
+  return importExportContainer;
 }
+
+
+
 
 function createModTogToolsMenu() {
   modTogToolsMenu = document.createElement('div');
@@ -996,11 +1151,55 @@ function createModTogToolsMenu() {
   modTogToolsMenu.className = 'gg-tools-menu';
   modTogToolsMenu.style.display = 'none';
   modTogToolsMenu.style.maxWidth = '400px';
-  modTogToolsMenu.style.maxHeight = '300px';
+  modTogToolsMenu.style.minWidth = '400px';
+  modTogToolsMenu.style.maxHeight = '500px';
   modTogToolsMenu.style.overflowY = 'auto';
-  
+
+  // Sticky header with search
+  const header = document.createElement('div');
+  header.style.position = 'sticky';
+  header.style.top = '0';
+  header.style.background = '#111';
+  header.style.zIndex = '1';
+  header.style.padding = '6px';
+  header.style.borderBottom = '1px solid #333';
+  header.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
+
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.placeholder = 'Search modes... (name, group, description)';
+  search.style.width = '100%';
+  search.style.padding = '6px 8px';
+  search.style.borderRadius = '4px';
+  search.style.border = '1px solid #444';
+  search.style.background = '#222';
+  search.style.color = '#ddd';
+
+  search.addEventListener('input', () => {
+    currentSearchQuery = (search.value || '').trim().toLowerCase();
+    updateModTogToolsMenu();
+    repositionMenu();
+  });
+  search.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      search.value = '';
+      currentSearchQuery = '';
+      updateModTogToolsMenu();
+      repositionMenu();
+      e.stopPropagation();
+    }
+  });
+
+  header.appendChild(search);
+  modTogToolsMenu.appendChild(header);
+  modTogSearchInput = search;
+
+  // Content container below sticky header
+  modTogToolsMenuContent = document.createElement('div');
+  modTogToolsMenu.appendChild(modTogToolsMenuContent);
+
   document.body.appendChild(modTogToolsMenu);
-  
+
   document.addEventListener('click', (e) => {
     if (!modTogToolsMenu.contains(e.target) && e.target.id !== 'modtog_menu_button') {
       modTogToolsMenu.style.display = 'none';
@@ -1008,135 +1207,170 @@ function createModTogToolsMenu() {
   });
 }
 
-// ===== Global Prompt Interceptor =====
-globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, type) {
-  // Check if extension is enabled
-  if (!extensionEnabled) {
-    return;
-  }
-  
-  console.log("Mode toggle prompt interceptor triggered");
-  
-  const chatId = getCurrentChatId();
-  const savedStates = extension_settings[EXTENSION_NAME]?.chatStates?.[chatId] || {};
-  
-  // CHANGE 2: Include modes that are currently active OR were previously active (in saved states but now OFF)
-  const modesToInclude = modes.filter(mode => {
-    const isCurrentlyActive = mode.status === 'ON' || mode.status === 'Activating' || mode.status === 'Deactivating';
-    const wasPreviouslyActive = savedStates.hasOwnProperty(mode.name) && mode.status === 'OFF';
-    return isCurrentlyActive || wasPreviouslyActive;
-  });
-  
-  if (modesToInclude.length > 0 && chat.length > 0) {
-    const modeLines = modesToInclude.map(mode => {
-      let displayStatus = mode.status;
-      if (mode.status === 'Activating') displayStatus = 'ON';
-      if (mode.status === 'Deactivating') displayStatus = 'OFF';
-      
-      return `[${mode.name} ${displayStatus}] - (Effect when ON "${mode.description}", should be removed when OFF)`;
-    });
-    
 
-    const prefix = "Current Active or now Disabled non-diegetic modifier modes:\n\n" + modeLines.join('\n') + '\n\n';
-    
+
+// ===== Event Listeners =====
+function setupEventListeners() {
+  try {
+    const context = SillyTavern.getContext();
+    const { eventSource, event_types } = context;
+    if (!eventSource || !event_types) {
+      console.error("EventSource or event_types not available");
+      return;
+    }
+
+    eventSource.on(event_types.CHAT_CHANGED, () => {
+      console.log("Chat changed - loading mode states");
+      setTimeout(loadModeStates, 100);
+    });
+
+    eventSource.on(event_types.APP_READY, () => {
+      console.log("App ready - initial load");
+      setTimeout(() => {
+        loadModeOverrides();
+        loadModeStates();
+      }, 500);
+    });
+
+    console.log("Mode toggles event listeners registered");
+  } catch (error) {
+    console.error("Error setting up event listeners:", error);
+  }
+}
+
+
+
+
+
+// ===== Prompt Interceptor =====
+globalThis.modTogPromptInterceptor = async function(chat, contextSize, abort, type) {
+  if (!extensionEnabled) return;
+
+  const chatId = getCurrentChatId();
+  const state = getChatState(chatId);
+  const view = getModesView(chatId);
+  const settings = extension_settings[EXTENSION_NAME] || {};
+
+  // Decide which modes to include in the prefix
+  const modesToInclude = view.filter(m => {
+    const activeish = (m.status === 'ON' || m.status === 'Activating' || m.status === 'Deactivating');
+    const wasActiveButOff = (state[m.name] && m.status === 'OFF');
+    return activeish || wasActiveButOff;
+  });
+
+  if (modesToInclude.length > 0 && chat.length > 0) {
+    const mergeFormat = settings.mergeFormat || '[{{modeName}} {{displayStatus}}] - {{modeDescription}}';
+    const lines = modesToInclude.map(m => {
+      let displayStatus = m.status;
+      if (displayStatus === 'Activating') displayStatus = 'ON';
+      if (displayStatus === 'Deactivating') displayStatus = 'OFF';
+      return mergeFormat
+        .replace('{{modeName}}', m.name)
+        .replace('{{displayStatus}}', displayStatus)
+        .replace('{{modeDescription}}', m.description);
+    });
+
+    const pre = (settings.preFraming ?? DEFAULT_PRE_FRAMING).trim();
+    const post = (settings.postFraming ?? DEFAULT_POST_FRAMING).trim();
+    const prefix = '\n' + pre +'\n\n'+ lines.join('\n') + '\n\n' + post + '\n\n';
+
     const lastMessage = chat[chat.length - 1];
-    if (lastMessage && lastMessage.is_user) {
+    if (lastMessage?.is_user) {
       lastMessage.mes = prefix + lastMessage.mes;
     }
   }
-  
-  // Handle mode state transitions
-  modes.forEach(mode => {
-    if (mode.status === 'Activating') {
-      mode.status = 'ON';
-    } else if (mode.status === 'Deactivating') {
-      mode.status = 'OFF';
-      mode._countdown = DEFAULT_OFF_COUNTDOWN; // Start countdown when transitioning to OFF
-    }
-  });
-  
-  // Decrement countdowns for OFF modes and remove expired ones
-  const modesToRemove = [];
-  modes.forEach(mode => {
-    if (mode.status === 'OFF' && mode._countdown !== undefined) {
-      mode._countdown--;
-      console.log(`Countdown for ${mode.name}: ${mode._countdown}`);
-      
-      if (mode._countdown <= 0) {
-        console.log(`Removing ${mode.name} from toggled modes (countdown expired)`);
-        modesToRemove.push(mode.name);
-        delete mode._countdown;
-        toggledModes.delete(mode.name);
+
+  // Apply transitions and countdowns
+  const countdownDefault = getCountdown();
+  const removed = [];
+  for (const [name, st] of Object.entries(state)) {
+    if (st.status === 'Activating') {
+      st.status = 'ON'; delete st.countdown;
+    } else if (st.status === 'Deactivating') {
+      st.status = 'OFF'; st.countdown = countdownDefault;
+    } else if (st.status === 'OFF' && st.countdown !== undefined) {
+      st.countdown--;
+      if (st.countdown <= 0) {
+        delete state[name];
+        removed.push(name);
       }
     }
-  });
-  
-  // Show notification if modes were removed
-  if (modesToRemove.length > 0 && window.toastr) {
-    toastr.info(`Cleared ${modesToRemove.length} mode(s) from memory`, 'Mode Toggle');
   }
-  
+
+  if (removed.length && window.toastr) {
+    toastr.info(`Cleared ${removed.length} mode(s) from memory`, 'Mode Toggle');
+  }
+
   updateMenuTitle();
   updateModTogToolsMenu();
-  
-  // Save states after transitions and countdown updates
-  saveModeStates();
+  saveSettingsDebounced();
 };
+
+
+modTogResizeObserver = new ResizeObserver(() => {
+  if (modTogToolsMenu.style.display === 'block') {
+    repositionMenu();
+  }
+});
+
+
+window.addEventListener('resize', () => {
+  if (modTogToolsMenu?.style.display === 'block') repositionMenu();
+});
+
 
 // ===== Settings init =====
 async function initSettings() {
+
+  await loadDefaultModesFromAssets();
+
   const html = await renderExtensionTemplateAsync("third-party/st-mode-toggles", "settings");
   jQuery(document.getElementById("extensions_settings")).append(html);
-  
-  console.log("Mode toggle extension initialized with persistence system and custom mode support");
-  
-  // Setup settings listeners after adding the HTML
+
+  console.log("Mode toggle extension initialized (immutable defaults + overrides + per-chat state)");
+
   setTimeout(() => {
     setupSettingsListeners();
     loadExtensionSettings();
   }, 100);
-  
+
   setTimeout(setupEventListeners, 1000);
-  
-  // Add extension menu button using DOMContentLoaded pattern
+
+  // Add extension menu button
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', addExtensionMenuButton);
   } else {
     addExtensionMenuButton();
   }
-  
+
+  // Observe for menu container creation
   const observer = new MutationObserver((mutations) => {
     for (let mutation of mutations) {
       if (mutation.type === 'childList') {
         for (let node of mutation.addedNodes) {
           if (node.nodeType === 1) {
-            if (node.id === 'gg-menu-buttons-container' || 
-                node.querySelector('#gg-menu-buttons-container')) {
+            if (node.id === 'gg-menu-buttons-container' ||
+                node.querySelector?.('#gg-menu-buttons-container')) {
               if (addMenuButton()) {
                 observer.disconnect();
                 return;
               }
             }
-            // Also try to add extension menu button when extensions menu is added
-            if (node.id === 'extensionsMenu' || 
-                node.querySelector('#extensionsMenu')) {
-              setTimeout(() => {
-                addExtensionMenuButton();
-              }, 100);
+            if (node.id === 'extensionsMenu' ||
+                node.querySelector?.('#extensionsMenu')) {
+              setTimeout(addExtensionMenuButton, 100);
             }
           }
         }
       }
     }
   });
-  
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  modTogResizeObserver.observe(modTogToolsMenu);
+
 }
 
-// ===== Manual functions for testing =====
+// ===== Expose for manual testing =====
 globalThis.saveModeStates = saveModeStates;
 globalThis.loadModeStates = loadModeStates;
 globalThis.showAddEditModeDialog = showAddEditModeDialog;

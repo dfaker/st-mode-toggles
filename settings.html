@@ -1,16 +1,73 @@
-<div class="mode-toggles-settings">
-  <div class="inline-drawer">
-    <div class="inline-drawer-toggle inline-drawer-header">
-      <b data-i18n="Mode toggles">Mode Toggles</b>
-      <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
-    </div>
+<div id="mode_toggles_contents" class="mode-toggles-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <div class="flex-container alignitemscenter margin0">
+                <b data-i18n="mode_toggles_title">Mode Toggles</b>
+            </div>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div id="mode-toggles-drawer-contents">
+                <div class="setting_item">
+                    <label class="flex-container">
+                        <input type="checkbox" id="mode_toggles_enabled" />
+                        <span data-i18n="Enable">Enable</span>
+                    </label>
+                </div>
 
-    <div class="inline-drawer-content">
-      <label class="flex-container">
-        <input type="checkbox" id="mode_toggles_enabled" />
-        <span data-i18n="Enable">Enable</span>
-      </label>
+                <div class="setting_item">
+                    <label class="flex-container">
+                      <input type="checkbox" id="mode_toggles_load_core">
+                      <span data-i18n="mode_toggles_guided_generations">Load Core (Default) Modes</span>
+                    </label>
+                </div>
 
+
+                <div class="setting_item">
+                    <label class="flex-container">
+                        <input type="checkbox" id="mode_toggles_guided_generations" />
+                        <span data-i18n="mode_toggles_guided_generations">Enable guided generations bar integration</span>
+                    </label>
+                </div>
+                
+                <div class="setting_item">
+                    <label for="mode_toggles_framing">
+                        <small data-i18n="mode_toggles_pre_framing_desc">Text to insert before mode content</small>
+                    </label>
+                    <textarea id="mode_toggles_framing" class="text_pole textarea_compact" rows="3" placeholder="Current Active or now Disabled non-diegetic modifier modes:&#10;(ON = world rule applies. OFF = no effect; earlier mentions are non-canon.)"></textarea>
+                </div>
+                
+                <div class="setting_item">
+                    <label for="mode_toggles_merge">
+                        <small data-i18n="mode_toggles_merge_format_desc">Format for merging mode content</small>
+                    </label>
+                    <small class="notes" data-i18n="mode_toggles_merge_fields">Available merge fields: {{modeName}}, {{displayStatus}}, {{modeDescription}}</small>
+                    <textarea id="mode_toggles_merge" class="text_pole textarea_compact" rows="3" placeholder="[{{modeName}} {{displayStatus}}] - (Effect when ON &quot;{{modeDescription}}&quot;, should be removed when OFF)"></textarea>
+                </div>
+                
+                <div class="setting_item">
+                    <label for="mode_toggles_framing_post">
+                        <small data-i18n="mode_toggles_post_framing_desc">Text to insert after mode content</small>
+                    </label>
+                    <textarea id="mode_toggles_framing_post" class="text_pole textarea_compact" rows="3" placeholder="No reference should be made to the presence of these modifier modes inside the chat, only their effects."></textarea>
+                </div>
+                
+                <div class="setting_item">
+                    <label for="mode_toggles_countdown">
+                        <small data-i18n="mode_toggles_countdown_desc">Message count before OFF removal</small>
+                    </label>
+                    <input type="number" id="mode_toggles_countdown" class="text_pole" min="0" value="5" />
+                </div>
+                
+                <div class="setting_item flex-container">
+                    <input id="mode_toggles_remove_all" class="menu_button" type="button" value="Remove All Custom Modes" data-i18n-value="mode_toggles_remove_all" />
+                    <input id="mode_toggles_reset_defaults" class="menu_button" type="button" value="Reset Extension to Defaults" data-i18n-value="mode_toggles_reset_defaults" />
+                </div>
+                
+                <div class="setting_item">
+                    <small class="notes" data-i18n="mode_toggles_help">Configure how different modes are framed and merged in your conversations.</small>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
