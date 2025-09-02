@@ -236,7 +236,7 @@ function enableExtension() {
   saveExtensionSettings();
 
   console.log("Mode toggles extension enabled");
-  if (window.toastr) toastr.success('Mode Toggles enabled', 'Mode Toggle');
+  
 }
 
 function disableExtension() {
@@ -1520,4 +1520,5 @@ globalThis.disableExtension = disableExtension;
 // ===== Main =====
 jQuery(() => {
   initSettings();
+
 });
